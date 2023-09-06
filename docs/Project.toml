@@ -1,4 +1,4 @@
 [deps]
-AlgebraicDataMigrations = "b66562e1-fa90-4e8b-9505-c909188fab76"
+AlgebraicDataMigrations = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"

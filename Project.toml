@@ -9,4 +9,4 @@ Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
 
 [compat]
 Catlab = "^0.14"
-julia = "1.6"
+julia = "1.10"
