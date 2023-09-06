@@ -1,7 +1,7 @@
-# AlgebraicTemplate.jl
+# AlgebraicDataMigrations.jl
 
 ```@meta
-CurrentModule = AlgebraicTemplate
+CurrentModule = AlgebraicDataMigrations
 ```
 
-`AlgebraicTemplate.jl` is a Julia library for...
+`AlgebraicDataMigrations.jl` is a Julia library for...

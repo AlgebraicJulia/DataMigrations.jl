@@ -1,6 +1,6 @@
 using Test
 
-using AlgebraicTemplate
+using AlgebraicDataMigrations
 
 @testset "Core" begin
   include("core.jl")

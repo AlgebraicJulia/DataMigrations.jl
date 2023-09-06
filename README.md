@@ -1,9 +1,9 @@
-# AlgebraicTemplate.jl
+# AlgebraicDataMigrations.jl
 
-[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicTemplate.jl/stable)
-[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicTemplate.jl/dev)
-[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicTemplate.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicTemplatee.jl)
-[![CI/CD](https://github.com/AlgebraicJulia/AlgebraicTemplate.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicTemplate.jl/actions/workflows/julia_ci.yml)
+[![Stable Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicDataMigrations.jl/stable)
+[![Development Documentation](https://img.shields.io/badge/docs-dev-blue.svg)](https://AlgebraicJulia.github.io/AlgebraicDataMigrations.jl/dev)
+[![Code Coverage](https://codecov.io/gh/AlgebraicJulia/AlgebraicDataMigrations.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/AlgebraicDataMigrationse.jl)
+[![CI/CD](https://github.com/AlgebraicJulia/AlgebraicDataMigrations.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/AlgebraicDataMigrations.jl/actions/workflows/julia_ci.yml)
 
 A template repository for making a new AlgebraicJulia package.
 
@@ -27,16 +27,16 @@ A template repository for making a new AlgebraicJulia package.
    git clone https://github.com/AlgebraicJulia/AlgebraicX.jl.git
    cd AlgebraicX.jl
    ```
-5. Rename the file `src/AlgebraicTemplate.jl` to match the name of your new package (e.x. "AlgebraicX")
+5. Rename the file `src/AlgebraicDataMigrations.jl` to match the name of your new package (e.x. "AlgebraicX")
    ```sh
-   mv src/AlgebraicTemplate.jl src/AlgebraicX.jl
+   mv src/AlgebraicDataMigrations.jl src/AlgebraicX.jl
    ```
-6. Replace all instances of the word "AlgebraicTemplate" with your new package name (e.x. "AlgebraicX")
+6. Replace all instances of the word "AlgebraicDataMigrations" with your new package name (e.x. "AlgebraicX")
    ```sh
    # On linux
-   git grep -l 'AlgebraicTemplate' | xargs sed -i 's/AlgebraicTemplate/AlgebraicX/g'
+   git grep -l 'AlgebraicDataMigrations' | xargs sed -i 's/AlgebraicDataMigrations/AlgebraicX/g'
    # On Mac OS X
-   git grep -l 'AlgebraicTemplate' | xargs sed -i '' -e 's/AlgebraicTemplate/AlgebraicX/g'
+   git grep -l 'AlgebraicDataMigrations' | xargs sed -i '' -e 's/AlgebraicDataMigrations/AlgebraicX/g'
    ```
 7. Generate a new random version 4 UUID (you can get one here: https://www.uuidgenerator.net/version4)
    - We will assume for this example that your new UUID is `<UUID>`

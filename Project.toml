@@ -1,5 +1,5 @@
-name = "AlgebraicTemplate"
-uuid = "b66562e1-fa90-4e8b-9505-c909188fab76"
+name = "AlgebraicDataMigrations"
+uuid = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
 license = "MIT"
 authors = ["AlgebraicJulia Developer <email@algebraicjulia.org>"]
 version = "0.0.1"
