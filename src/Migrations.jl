@@ -17,7 +17,7 @@ using Catlab.CategoricalAlgebra.FinCats: make_map, mapvals, presentation_key, Fi
 import Catlab.CategoricalAlgebra.FinCats: force
 using Catlab.CategoricalAlgebra.Chase: collage, crel_type, pres_to_eds, add_srctgt, chase
 using Catlab.CategoricalAlgebra.FinSets: VarSet
-import Catlab.CategoricalAlgebra.DataMigrations: migrate, migrate!, AbstractDataMigration, ContravariantMigration, DeltaSchemaMigration
+import Catlab.CategoricalAlgebra.FunctorialDataMigrations: migrate, migrate!, AbstractDataMigration, ContravariantMigration, DeltaSchemaMigration
 import Catlab.CategoricalAlgebra.Diagrams: DiagramHom
 using MLStyle: @match
 

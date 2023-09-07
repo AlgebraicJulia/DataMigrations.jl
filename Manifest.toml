@@ -22,7 +22,7 @@ uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[deps.Catlab]]
 deps = ["ACSets", "Colors", "CompTime", "Compose", "DataStructures", "GeneralizedGenerated", "JSON", "LightXML", "LinearAlgebra", "Logging", "MLStyle", "PrettyTables", "Random", "Reexport", "SparseArrays", "StaticArrays", "Statistics", "StructEquality", "Tables"]
-git-tree-sha1 = "90eaf9c345b57c3beb7bd4e9301ee536441f1429"
+git-tree-sha1 = "45594ceb9241cc635afbdd6e67c9a2a839f3342b"
 repo-rev = "removeMigrations"
 repo-url = "https://github.com/AlgebraicJulia/Catlab.jl/"
 uuid = "134e5e36-593f-5add-ad60-77f754baafbe"
