@@ -38,7 +38,7 @@ permissions:
 jobs:
   CI:
     if: github.event_name == 'pull_request' || github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.action == 'test')
-    uses: AlgebraicJulia/.github/.github/workflows/julia_ci.yml@main
+    uses: ./.github/workflows/julia_stuff.yml
     secrets: inherit
   CompatHelper:
     if: github.event_name == 'schedule'
