@@ -2,14 +2,10 @@
 """
 module AlgebraicDataMigrations
 
-export hello
+using Reexport
+include("Migrations.jl")
+include("DiagrammaticPrograms.jl")
 
-using Catlab
-
-""" hello(name::String)
-
-Returns the string "Hello, <name>!" where `<name>` is replaced with the provided parameter
-"""
-hello(name::String) = string("Hello, ", name, "!")
-
+@reexport using .Migrations
+@reexport using .DiagrammaticPrograms
 end

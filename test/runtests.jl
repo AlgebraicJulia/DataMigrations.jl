@@ -1,7 +1,9 @@
 using Test
-
-using AlgebraicDataMigrations
-
-@testset "Core" begin
-  include("core.jl")
+@testset "Diagrammatic Programs" begin
+  include("DiagrammaticPrograms.jl")
 end
+@testset "Migrations" begin
+  include("Migrations.jl")
+end
+
+

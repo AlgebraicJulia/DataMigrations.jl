@@ -1,3 +1,4 @@
 [deps]
 AlgebraicDataMigrations = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
+Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
