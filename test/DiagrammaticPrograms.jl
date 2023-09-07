@@ -233,7 +233,7 @@ M = @migration SchGraph SchGraph begin
   src => tgt
   tgt => src
 end
-@test M isa DataMigrations.DeltaSchemaMigration
+@test M isa Catlab.CategoricalAlgebra.FunctorialDataMigrations.DeltaSchemaMigration
 @test functor(M) == FinFunctor(Dict(:V => :V, :E => :E),
                       Dict(:src => :tgt, :tgt => :src),
                       SchGraph, SchGraph)
