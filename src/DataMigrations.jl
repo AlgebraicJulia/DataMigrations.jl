@@ -1,6 +1,6 @@
 """ Some description of ths package
 """
-module AlgebraicDataMigrations
+module DataMigrations
 
 using Reexport
 include("Migrations.jl")

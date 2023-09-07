@@ -5,8 +5,8 @@ using Catlab
 using Catlab.Theories: FreeCategory, FreePointedSetCategory, FreePointedSetSchema
 using Catlab.Graphs.BasicGraphs: NamedGraph
 using Catlab.WiringDiagrams.CPortGraphs
-using AlgebraicDataMigrations
-using AlgebraicDataMigrations.DiagrammaticPrograms: get_keyword_arg_val, destructure_unary_call
+using DataMigrations
+using DataMigrations.DiagrammaticPrograms: get_keyword_arg_val, destructure_unary_call
 
 
 @present SchSet(FreeSchema) begin
@@ -279,7 +279,7 @@ end
   src => src∘e₁
   tgt => tgt∘e₂
 end
-@test M isa AlgebraicDataMigrations.Migrations.ConjSchemaMigration
+@test M isa DataMigrations.Migrations.ConjSchemaMigration
 F = functor(M)
 F_E = diagram(ob_map(F, :E))
 @test nameof.(collect_ob(F_E)) == [:V, :E, :E]
@@ -309,7 +309,7 @@ M = @migration SchGraph SchSet begin
   src => begin end
   tgt => begin end
 end
-@test M isa AlgebraicDataMigrations.Migrations.ConjSchemaMigration
+@test M isa DataMigrations.Migrations.ConjSchemaMigration
 @test isempty(shape(ob_map(functor(M), :V)))
 
 # Syntactic variant of above.
@@ -317,7 +317,7 @@ M′ = @migration SchGraph SchSet begin
   V => @unit
   E => X
 end
-@test M′ isa AlgebraicDataMigrations.Migrations.ConjSchemaMigration
+@test M′ isa DataMigrations.Migrations.ConjSchemaMigration
 @test isempty(shape(ob_map(functor(M′), :V)))
 @test isempty(shape(ob_map(functor(M),:V)))
 
@@ -433,7 +433,7 @@ M = @migration SchGraph SchGraph begin
     e₂ => v₂ ∘ tgt
   end
 end
-@test M isa AlgebraicDataMigrations.Migrations.GlueSchemaMigration
+@test M isa DataMigrations.Migrations.GlueSchemaMigration
 F = functor(M)
 F_V = diagram(ob_map(F, :V))
 @test collect_ob(F_V) == fill(SchGraph[:V], 2)
@@ -497,8 +497,8 @@ end
 
 
 F = functor(M)
-@test ob_map(F, :V) isa AlgebraicDataMigrations.Migrations.GlucQuery
-@test M isa AlgebraicDataMigrations.Migrations.GlucSchemaMigration
+@test ob_map(F, :V) isa DataMigrations.Migrations.GlucQuery
+@test M isa DataMigrations.Migrations.GlucSchemaMigration
 F_src = hom_map(F, :src)
 x = only(ob_generators(dom(diagram(ob_map(F,:V)))))
 @test collect_ob(shape_map(F_src)) == fill(x,3)
@@ -532,8 +532,8 @@ M = @migration SchGraph SchBipartiteGraph begin
   end
 end
 F = functor(M)
-@test ob_map(F, :V) isa AlgebraicDataMigrations.Migrations.GlucQuery
-@test M isa AlgebraicDataMigrations.Migrations.GlucSchemaMigration
+@test ob_map(F, :V) isa DataMigrations.Migrations.GlucQuery
+@test M isa DataMigrations.Migrations.GlucSchemaMigration
 F_src = hom_map(F, :src)
 @test collect_ob(shape_map(F_src)) == [Ob(FreeCategory.Ob,:(v₁)),Ob(FreeCategory.Ob,:(v₂))]
 F_src1, F_src2 = collect(values(components(diagram_map(F_src))))
@@ -561,8 +561,8 @@ M = @migration SchReflexiveGraph SchReflexiveGraph begin
   refl => vv
 end
 F = functor(M)
-@test ob_map(F, :V) isa AlgebraicDataMigrations.Migrations.GlucQuery
-@test M isa AlgebraicDataMigrations.Migrations.GlucSchemaMigration
+@test ob_map(F, :V) isa DataMigrations.Migrations.GlucQuery
+@test M isa DataMigrations.Migrations.GlucSchemaMigration
 F_src = hom_map(F, :src)
 x = only(ob_generators(codom(shape_map(F_src))))
 @test collect_ob(shape_map(F_src)) == fill(x,3)

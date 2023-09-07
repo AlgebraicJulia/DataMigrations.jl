@@ -1,7 +1,7 @@
-# AlgebraicDataMigrations.jl
+# DataMigrations.jl
 
 ```@meta
-CurrentModule = AlgebraicDataMigrations
+CurrentModule = DataMigrations
 ```
 
-`AlgebraicDataMigrations.jl` is a Julia library for performing complex categorical data migrations.
+`DataMigrations.jl` is a Julia library for performing complex categorical data migrations.

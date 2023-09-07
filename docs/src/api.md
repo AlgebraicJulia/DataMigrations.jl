@@ -1,5 +1,5 @@
 # Library Reference
 
 ```@autodocs
-Modules = [AlgebraicDataMigrations]
+Modules = [DataMigrations]
 ```

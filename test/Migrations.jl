@@ -2,7 +2,7 @@ module TestMigrations
 using Test
 
 using Catlab
-using AlgebraicDataMigrations
+using DataMigrations
 
 @present SchSet(FreeSchema) begin
   X::Ob
@@ -26,7 +26,7 @@ M = DataMigration(FinDomFunctor(Dict(V => Diagram{op}(F_V),
                        E => Diagram{op}(F_E)),
                   Dict(s => DiagramHom{op}([(1, s)], F_E, F_V),
                        t => DiagramHom{op}([(2, t)], F_E, F_V)), C))
-@test M isa AlgebraicDataMigrations.Migrations.ConjSchemaMigration
+@test M isa DataMigrations.Migrations.ConjSchemaMigration
 g = path_graph(Graph, 5)
 H = migrate(g, M, tabular=true)
 @test length(H(V)) == 5
