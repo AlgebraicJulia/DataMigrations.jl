@@ -13,7 +13,7 @@ using Base.Iterators: repeated
 using MLStyle: @match
 
 using Catlab
-using Catlab.Graphs.BasicGraphs: NamedGraph, DiagramGraph, vertex_named, edge_named
+using Catlab.Graphs.BasicGraphs: DiagramGraph, vertex_named, edge_named
 using Catlab.Theories: munit, FreeSchema, FreePointedSetSchema, ThPointedSetSchema, FreeCategory, FreePointedSetCategory, zeromap, Ob, Hom, dom, codom, HomExpr
 using Catlab.CategoricalAlgebra.FinCats: FinCat, mapvals, make_map, FinCatPresentation
 using ..Migrations
