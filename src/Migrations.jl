@@ -25,46 +25,121 @@ using MLStyle: @match
 #and their interaction with ordinary functors and nats.
 #########################################################
 
-""" Diagram representing a (conjunctive or gluing) query.
+""" 
+A diagram representing a (conjunctive, duc, gluing, or gluc) query.
 
-Besides the diagram functor itself, a query diagram contains a dictionary of
-query parameters.
+Besides the diagram functor itself, a `QueryDiagram` contains a 
+dictionary `params` of query parameters. 
+The keys of `params` are the [`hom_generators`](@ref)
+of the target schema `C` on which the diagram is not fully defined
+until a migration is executed. The values are either `Function`s
+or constants. If `Function`s, then these values will have one
+argument for each `hom_generator` of the target schema `D` 
+and return a further function of one argument.
+
+When an `ACSet` ``X`` is migrated via a `QueryDiagram`, 
+the `Function`s in `params` are evaluated on the 
+[`FinDomFunction`](@ref)s in ``X``'s range, and the resulting
+one-variable functions are either pasted directly into the 
+migrated `ACSet` ``Y``, or else composed with intermediate
+`FinDomFunction`s defined by migrating ``X`` using only
+the inner `diagram`. If the keys of `params` are constants
+then ``Y`` will receive constant attributes at the 
+corresponding values.
 """
 struct QueryDiagram{T,C<:Cat,D<:Functor{<:FinCat,C},
                     Params<:AbstractDict} <: Diagram{T,C,D}
   diagram::D
   params::Params
 end
+"""
+    QueryDiagram{T}(F,params)
+
+Construct a `QueryDiagram` based on the [`Functor`](@ref) `F`
+and with parameter dictionary `params`. 
+
+The type parameter
+`T` may be `id`, `op`, or possibly `co` or `Any`, though not
+all functionality is defined for `co` and not all functionality
+is definable for `Any`. Other type parameters are inferred from 
+the type of `F`. The type `C` of the codomain `F`
+will in practice be a subtype of [`FinCat`](@ref) or of 
+[`Diagram`](@ref)`{T}`. 
+"""
 QueryDiagram{T}(F::D, params::P) where {T,C<:Cat,D<:Functor{<:FinCat,C},P} =
   QueryDiagram{T,C,D,P}(F, params)
 """
-  Force-evaluate the functor in a query diagram,
-  including putting the parameters into the hom-map 
-  explicitly.
+    force(d::QueryDiagram,[args...])
+
+Force-evaluate the `d.diagram` for a `QueryDiagram` `d`.
+  
+The result is a [`SimpleDiagram`](@ref), and in particular
+the inner call to `force` attempts to use `d.params`
+to produce a fully-defined [`FinDomFunctor`](@ref).
 """
 force(d::QueryDiagram{T},args...) where T =
   SimpleDiagram{T}(force(diagram(d),d.params,args...))
 
+"""
+A `DiagramHom` that may be partially-defined, to be evaluated later
+using the dictionary `params` of parameters.
+
+As with [`QueryDiagram`](@ref)s, `params` will be a dictionary
+of `Function`s or perhaps constants. A `QueryDiagramHom`
+is expected to live inside a [`DataMigration`](@ref) `M` and
+to be fully evaluated whenever [`migrate`](@ref) is called
+on `M` and some `ACSet` `X`. 
+
+How this works is that the partially-defined `DiagramHom`
+consisting of `shape_map`, `diagram_map`, and `precomposed_diagram`
+is whiskered with `X` (except where it's undefined), 
+and then the functions in `params` are used to fill in the gaps.
+
+See also [`QueryDiagram`](@ref), [`param_compose`](@ref)
+"""
 struct QueryDiagramHom{T,C<:Cat,F<:FinFunctor,Φ<:FinTransformation,D<:Functor{<:FinCat,C},Params<:AbstractDict}<:DiagramHom{T,C}
   shape_map::F
   diagram_map::Φ
   precomposed_diagram::D
   params::Params
 end
+
+"""
+    QueryDiagramHom{T}(shape_map, diagram_map, precomposed_diagram, params)
+
+Construct a `QueryDiagramHom` of variance `T` and fields the given arguments,
+with further type parameters inferred.
+"""
 QueryDiagramHom{T}(shape_map::F, diagram_map::Φ, precomposed_diagram::D,params::Params) where
 {T,C,F<:FinFunctor,Φ<:FinTransformation,D<:Functor{<:FinCat,C},Params<:AbstractDict} =
 QueryDiagramHom{T,C,F,Φ,D,Params}(shape_map, diagram_map, precomposed_diagram,params) 
 
+
+#XX: Maybe this isn't needed?
+"""
+    get_params(f::DiagramHom)
+
+Get the parameters of `f`, if `f` is a `QueryDiagramHom`.
+Otherwise return an empty `Dict`.
+"""
 get_params(f::QueryDiagramHom) = f.params
 get_params(f::DiagramHom) = Dict()
 
+"""
+    QueryDiagramHom{T}(params,args...)
+
+Build a `QueryDiagramHom` with variance `T` by first building a [`DiagramHom`](@ref)
+using `args...`, then adding the `params`. 
+
+There are many methods of `DiagramHom` allowing various calling conventions,
+and this allows `QueryDiagramHom` to steal them all reasonably efficiently.
+"""
 function QueryDiagramHom{T}(params::Params,args...) where {T,Params<:AbstractDict}
   dh = DiagramHom{T}(args...)
   QueryDiagramHom{T}(dh,params)
 end
 QueryDiagramHom{T}(dh::DiagramHom{T},params::Params) where {T,Params<:AbstractDict} =
   QueryDiagramHom{T}(dh.shape_map,dh.diagram_map,dh.precomposed_diagram,params)
-"""Convert the diagram category in which a diagram hom is being viewed."""
 DiagramHom{T}(f::QueryDiagramHom) where T =
   QueryDiagramHom{T}(f.shape_map, f.diagram_map, f.precomposed_diagram,get_params(f))
 
@@ -72,39 +147,64 @@ DiagramHom{T}(f::QueryDiagramHom) where T =
 #Note there's currently no composition of QueryDiagramHoms.
 
 #This and some others can probably be dispatched to just querydiagramhoms?
+"""
+    compose(f::DiagramHom,F::Functor,params[;kw...])
+
+Whisker a partially-defined [`DiagramHom`](@ref) with a 
+[`Functor`](@ref), using the dictionary `params` to fill in any gaps. 
+
+While [`QueryDiagramHom`](@ref)s have internal `params` for a similar
+purpose, it is sometimes necessary to borrow `params` from
+a [`QueryDiagram`](@ref) or [`DataMigration`](@ref) containing `f`, which
+is the functionality enabled here.
+
+See also: `param_compose`
+"""
 function compose(f::DiagramHom{T}, F::Functor, params;kw...) where T
   whiskered = param_compose(diagram_map(f),F,params)
   DiagramHom{T}(shape_map(f), whiskered,
                 compose(f.precomposed_diagram, F; kw...))
 end
 
-"""Whisker a partially natural transformation with a functor ``H``,
-given any needed parameters specifying the functions in ``H``'s codomain
-which the whiskered result should map to. Currently assumes
-the result will be a totally defined transformation.
+"""
+    param_compose(α,H,params)
+
+Whisker a partially natural transformation `α` with a functor `H`,
+given any needed parameters `params` specifying the functions in 
+`H`'s codomain which the whiskered result should map to. 
+
+Currently assumes the result will be a totally defined transformation.
 """
 function param_compose(α::FinTransformation, H::Functor,params)
-F, G = dom(α), codom(α)
-new_components = mapvals(pairs(components(α));keys=true) do i,f
-  compindex = ob(dom(F),i)
-  #allow non-strictness because of possible pointedness
-  s, t = ob_map(compose(F,H,strict=false),compindex), 
-  ob_map(compose(G,H,strict=false),compindex)
-  if head(f) == :zeromap
-  func = params[i]
-  FinDomFunction(func,s,t)
-  #may need to population params with identities
-  else
-  func = haskey(params,i) ? SetFunction(params[i],t,t) : SetFunction(identity,t,t)
-  hom_map(H,f)⋅func
+  F, G = dom(α), codom(α)
+  new_components = mapvals(pairs(components(α));keys=true) do i,f
+    compindex = ob(dom(F),i)
+    #allow non-strictness because of possible pointedness
+    s, t = ob_map(compose(F,H,strict=false),compindex), 
+    ob_map(compose(G,H,strict=false),compindex)
+    if head(f) == :zeromap
+    func = params[i]
+    FinDomFunction(func,s,t)
+    #may need to population params with identities
+    else
+    func = haskey(params,i) ? SetFunction(params[i],t,t) : SetFunction(identity,t,t)
+    hom_map(H,f)⋅func
+    end
   end
+  FinTransformation(new_components,compose(F, H, strict=false), compose(G, H, strict=false))
 end
-FinTransformation(new_components,compose(F, H, strict=false), compose(G, H, strict=false))
-end
+
 """
-Compose a diagram with parameters with a functor. 
-The result is not evaluated, so the functor may remain
-partially defined with parameters still to be filled in.
+    compose(d::QueryDiagram,F::Functor[;kw...])
+
+Lazily compose a diagram with parameters (see [QueryDiagram](@ref)) 
+with a `Functor`. 
+
+The result is not evaluated, so the 
+returned `QueryDiagram` may remain partially defined with parameters 
+still to be filled in.
+
+See also: `force`, `QueryDiagram`
 """
 function compose(d::QueryDiagram{T},F::Functor; kw...) where T
   D = diagram(d)
@@ -121,10 +221,23 @@ function compose(d::QueryDiagram{T},F::Functor; kw...) where T
     params_new[n] =
       FinDomFunction(f(morfuns...),domain,codomain)
   end
-  #This will now contain a composite functor which can't directly be hom-mapped; ready to be forced.
+  #This will now contain a composite functor which can't 
+  #necessarily be hom-mapped; ready to be forced.
   QueryDiagram{T}(partial,params_new)
 end
 
+#Does the type guarantee definitely hold for empty collections?
+"""
+    force(F::FinDomFunctor,params,[Obtype=Any,Homtype=Any])
+
+Force-evaluate a partially-defined `FinDomFunctor` by
+using `Function`s in `params` to fill in undefined 
+entries of `F`'s `hom_map`.
+
+If `Obtype` and `Homtype` are specified, then the
+returned functor is guaranteed to have exactly those
+value types in its `ob_map` and `hom_map`.
+"""
 function force(F::FinDomFunctor, params,Obtype::Type=Any, Homtype::Type=Any)
   C = dom(F)
   FinDomFunctor(
@@ -137,9 +250,15 @@ end
 ###New data types for complex queries
 #####################################
 
-""" Conjunctive query over schema ``C``.
+""" 
+A conjunctive query over schema ``C``.
 
-The diagram comprising the query specifies a finite limit.
+When this query is used as part of a call
+to `migrate`, the diagram will be composed 
+with an acset and its limit will then
+be computed in ``Set``.
+
+See also: `GlueQuery`, `GlucQuery`
 """
 const ConjQuery{C<:FinCat} = Diagram{op,C}
 
@@ -148,6 +267,8 @@ const ConjQuery{C<:FinCat} = Diagram{op,C}
 The diagram comprising the query specifies a finite colimit. In the important
 special case that the diagram has discrete shape, it specifies a finite
 coproduct and the query is called "linear" or "disjunctive".
+
+See also: `ConjQuery`, `GlucQuery`
 """
 const GlueQuery{C<:FinCat} = Diagram{id,C}
 
@@ -157,18 +278,21 @@ The diagram of diagrams comprising the query specifies a finite colimit of
 finite limits. In the important special case that the outer diagram has discrete
 shape, it specifies a finite coproduct of finite limits and the query is called
 a "duc query" (disjoint union of conjunctive queries).
+
+See also: `GlueQuery`, `GlucQuery`
 """
 const GlucQuery{C<:FinCat} = Diagram{id,<:TypeCat{<:Diagram{op,C}}}
 
+#The same, except for the supertype and the variance parameter T, as a QueryDiagram.
+#In this case, the codomain of F is probably a category of queri
 """
-A contravariant data migration whose functor ``F`` may not be fully defined. Instead,
-the migration ``F⋅X`` for an acset ``X`` can only be constructed once we have access
-to ``X``'s attribute types. The dictionary of parameters contains anonymous 
+A contravariant data migration whose underlying functor ``F`` may not be fully defined. 
+
+Instead, the migration `F⋅X` for an acset `X` can only be constructed once 
+we have access to `X`'s attributes and homs. The dictionary of parameters contains anonymous 
 functions acting on ``X``'s attributes using Julia functions defined on 
 these attribute types.
 """
-#The same, except for the supertype and the variance parameter T, as a QueryDiagram in older code.
-#(Instead, `C` itself is probably a category of queries, which thus contain the information of T further down.)
 struct DataMigration{F<:FinDomFunctor,Params<:AbstractDict} <: ContravariantMigration{F}
   functor::F
   params::Params
@@ -226,7 +350,7 @@ function migrate(X::FinDomFunctor,M::ComplexDeltaMigration)
       )
   end
 
-  """
+"""
 Get the source schema of a data migration functor, recursing in the case
 that the proximate codomain is a diagram category.
 """
@@ -310,7 +434,11 @@ end
 
 # Gluc migration
 #---------------
+"""
+    migrate(M,X)
 
+do the dang migration
+"""
 function migrate(X::FinDomFunctor, M::GlucSchemaMigration)
 F = functor(M)
 tgt_schema = dom(F)
