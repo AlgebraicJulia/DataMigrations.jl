@@ -535,7 +535,7 @@ parse_diagram_data(C::FinCat, ast::AST.Diagram; kw...) =
 
 """ A diagram morphism without a domain or codomain.
 
-Like [`DiagramData`](@ref), this an intermediate data representation used
+Like `DiagramData`, this an intermediate data representation used
 internally by the parser for the [`@migration`](@ref) macro.
 """
 struct DiagramHomData{T,ObMap,HomMap,Params<:AbstractDict}
