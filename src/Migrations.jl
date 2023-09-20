@@ -377,7 +377,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     # Must supply object/morphism types to handle case of empty diagram.
     diagram_types = if c isa AttrTypeExpr
       (TypeSet, SetFunction)
-    elseif isempty(J)
+    elseif is_discrete(J)
       (FinSet{Int}, FinFunction{Int})
     else
       (SetOb, FinDomFunction{Int})
