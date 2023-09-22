@@ -13,10 +13,11 @@ import Catlab.Theories: compose
 using Catlab.Graphs.BasicGraphs: vertex_named
 import Catlab.CategoricalAlgebra.Categories: ob_map, hom_map
 import Catlab.GATs: functor
-using Catlab.CategoricalAlgebra.FinCats: make_map, mapvals, presentation_key, FinCatPresentation
+using Catlab.CategoricalAlgebra.FinCats: make_map, mapvals, presentation_key, FinCatPresentation, FinDomFunctorMap
 import Catlab.CategoricalAlgebra.FinCats: force
 using Catlab.CategoricalAlgebra.Chase: collage, crel_type, pres_to_eds, add_srctgt, chase
 using Catlab.CategoricalAlgebra.FinSets: VarSet
+using Catlab.CategoricalAlgebra.Sets: SetFunctionCallable
 import Catlab.CategoricalAlgebra.FunctorialDataMigrations: migrate, migrate!, AbstractDataMigration, ContravariantMigration, DeltaSchemaMigration
 import Catlab.CategoricalAlgebra.Diagrams: DiagramHom
 using MLStyle: @match
@@ -375,16 +376,21 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     Fc = ob_map(F, c)
     J = shape(Fc)
     # Must supply object/morphism types to handle case of empty diagram.
-    diagram_types = if c isa AttrTypeExpr
+    #=
+    diagram_types = if c isa AttrTypeExpr #Note this won't work if M constructed its own target schema!!!
       (TypeSet, SetFunction)
-    elseif is_discrete(J)
+    elseif isempty(J)
       (FinSet{Int}, FinFunction{Int})
     else
       (SetOb, FinDomFunction{Int})
     end
+    =#
+    diagram_types = isempty(J) ? (FinSet{Int}, FinFunction{Int}) : (Any,Any)
     # Make sure the diagram to be limited is a FinCat{<:Int}.
     # Disable domain check because acsets don't store schema equations.
     k = dom_to_graph(diagram(force(compose(Fc, X, strict=false), diagram_types...)))
+    #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
+    if valtype(k.hom_map) <: SetFunctionCallable k = FinDomFunctorMap(k.ob_map,FinDomFunction{Int}[a for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))  end
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
     if tabular
       names = (ob_generator_name(J, j) for j in ob_generators(J))

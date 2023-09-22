@@ -474,7 +474,7 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
                             type=Any, ob_parser=nothing, hom_parser=nothing)
   isnothing(ob_parser) && (ob_parser = x -> parse_ob(C, x))
   isnothing(hom_parser) && (hom_parser = (f,x,y) -> parse_hom(C,f))
-  g, eqs = Presentation(FreeCategory), Pair[] 
+  g, eqs = Presentation(FreeSchema), Pair[] 
   F_ob, F_hom, params = Dict{GATExpr,Any}(), Dict{GATExpr,Any}(), Dict{Symbol,Union{Literal,Function}}()
   mornames = map(nameof,hom_generators(C))
   for stmt in statements
@@ -522,7 +522,7 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
       _ => error("Cannot use statement $stmt in diagram definition")
     end
   end
-  J = FinCat(g)
+  J = FinCat(g) #oh no!
   DiagramData{type}(F_ob, 
                     F_hom, J, params)
 end
