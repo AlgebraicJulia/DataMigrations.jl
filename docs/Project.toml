@@ -1,0 +1,7 @@
+[deps]
+Catlab = "134e5e36-593f-5add-ad60-77f754baafbe"
+DataMigrations = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+Literate = "98b081ad-f1c9-55d3-8b20-4c87d4299306"
+TikzCDs = "1e332c56-9431-4126-8a34-92cbdf251ae4"
