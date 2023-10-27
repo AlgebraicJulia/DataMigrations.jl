@@ -13,11 +13,13 @@ using Base.Iterators: repeated
 using MLStyle: @match
 
 using Catlab
-using Catlab.Graphs.BasicGraphs: DiagramGraph, vertex_named, edge_named
 using Catlab.Theories: munit, FreeSchema, FreePointedSetSchema, ThPointedSetSchema, FreeCategory, FreePointedSetCategory, zeromap, Ob, Hom, dom, codom, HomExpr
 using Catlab.CategoricalAlgebra.FinCats: FinCat, mapvals, make_map, FinCatPresentation
 using ..Migrations
 using ..Migrations: ConjQuery, GlueQuery, GlucQuery
+
+const DiagramGraph = NamedGraph{Symbol,Symbol}
+
 # Abstract syntax
 #################
 
@@ -377,6 +379,7 @@ function change_shape(simple::Bool,old_shape::FinCatPresentation)
   simple ? FinCat(change_theory(unpoint(old_syntax),old_pres)) : old_shape
 end
 change_shape(simple::Bool,old_shape) = old_shape
+
 """ Present a diagram in a given category.
 
 Recall that a *diagram* in a category ``C`` is a functor ``F: J → C`` from a

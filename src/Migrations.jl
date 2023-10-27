@@ -10,9 +10,7 @@ using ACSets.DenseACSets: constructor, datatypes
 using Catlab
 using Catlab.Theories: ob, hom, dom, codom, attr, AttrTypeExpr, ⋅
 import Catlab.Theories: compose
-using Catlab.Graphs.BasicGraphs: vertex_named
-import Catlab.CategoricalAlgebra.Categories: ob_map, hom_map
-import Catlab.GATs: functor
+import Catlab: functor, ob_map, hom_map
 using Catlab.CategoricalAlgebra.FinCats: make_map, mapvals, presentation_key, FinCatPresentation, FinDomFunctorMap
 import Catlab.CategoricalAlgebra.FinCats: force
 using Catlab.CategoricalAlgebra.Chase: collage, crel_type, pres_to_eds, add_srctgt, chase
