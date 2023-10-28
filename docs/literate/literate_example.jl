@@ -146,9 +146,9 @@ A′ = migrate(Conflicts,A,N)
 O = @migration SchConflicts SchConflicts begin
   ConflictedPairs => @join begin
                       CP::ConflictedPairs
-                      T::Time
-                      (f:CP→T)::(x->Time( job1(x) < job2(x)))
-                      (g:CP→T)::(x->Time(1))
+                      T:: @julia_type Bool
+                      (f:CP→T)::(x->job1(x) < job2(x))
+                      (g:CP→T)::(x->true)
   end
   Job1 => Job1
   Job2 => Job2

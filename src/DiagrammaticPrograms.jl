@@ -13,11 +13,13 @@ using Base.Iterators: repeated
 using MLStyle: @match
 
 using Catlab
-using Catlab.Graphs.BasicGraphs: DiagramGraph, vertex_named, edge_named
 using Catlab.Theories: munit, FreeSchema, FreePointedSetSchema, ThPointedSetSchema, FreeCategory, FreePointedSetCategory, zeromap, Ob, Hom, dom, codom, HomExpr
 using Catlab.CategoricalAlgebra.FinCats: FinCat, mapvals, make_map, FinCatPresentation
 using ..Migrations
 using ..Migrations: ConjQuery, GlueQuery, GlucQuery
+using GATlab
+import GATlab: Presentation
+const DiagramGraph = NamedGraph{Symbol,Symbol}
 # Abstract syntax
 #################
 
@@ -377,6 +379,16 @@ function change_shape(simple::Bool,old_shape::FinCatPresentation)
   simple ? FinCat(change_theory(unpoint(old_syntax),old_pres)) : old_shape
 end
 change_shape(simple::Bool,old_shape) = old_shape
+function change_theory(syntax::Module,pres::Presentation{S,Name}) where {S,Name}
+  T = syntax.theory()
+  pres_new = Presentation(syntax)
+  types = intersect(keys(pres_new.generators),keys(pres.generators))
+  for t in types map(pres.generators[t]) do x
+    add_generator!(pres_new,generator_switch_syntax(syntax,x)) end end
+  #XX: test on equations
+  pres_new
+end
+
 """ Present a diagram in a given category.
 
 Recall that a *diagram* in a category ``C`` is a functor ``F: J → C`` from a
@@ -481,7 +493,7 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
     @match stmt begin
       AST.ObOver(x, X) => begin
         x′ = parse!(g, AST.Ob(x))
-        #`nothing`, though zeromap would be nicer, so that not every category and schema has to be pointed
+        #`nothing`, though zeroob would be nicer, so that not every category and schema has to be pointed
         F_ob[x′] = isnothing(X) ? nothing : ob_parser(X)
       end
       AST.HomOver(f, x, y, h) => begin
@@ -1116,7 +1128,7 @@ end
 """
 function parse_ob_ast(expr;kw...)::AST.ObExpr
   @match expr begin
-    Expr(:macrocall, _...) => parse_ob_macro_ast(expr;kw...)
+    Expr(:macrocall, _...) => parse_ob_macro_ast(expr;kw...) #XX: This should probably handle @julia_code
     x::Symbol || Expr(:curly, _...) => AST.ObGenerator(expr)
     _ => error("Invalid object expression $expr")
   end
