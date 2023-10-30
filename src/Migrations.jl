@@ -179,8 +179,8 @@ function param_compose(α::FinTransformation, H::Functor,params)
   new_components = mapvals(pairs(components(α));keys=true) do i,f
     compindex = ob(dom(F),i)
     #allow non-strictness because of possible pointedness
-    s, t = ob_map(compose(F,H,strict=false),compindex), 
-    ob_map(compose(G,H,strict=false),compindex)
+    s, t = ob_map(compose(F,H),compindex), 
+    ob_map(compose(G,H),compindex)
     if head(f) == :zeromap
     func = params[i]
     FinDomFunction(func,s,t)
@@ -190,7 +190,7 @@ function param_compose(α::FinTransformation, H::Functor,params)
     hom_map(H,f)⋅func
     end
   end
-  FinTransformation(new_components,compose(F, H, strict=false), compose(G, H, strict=false))
+  FinTransformation(new_components,compose(F, H), compose(G, H))
 end
 
 """
@@ -207,7 +207,7 @@ See also: `force`, `QueryDiagram`
 """
 function compose(d::QueryDiagram{T},F::Functor; kw...) where T
   D = diagram(d)
-  partial = compose(D,F;strict=false) #cannot be evaluated on the keys of params yet
+  partial = compose(D,F) #cannot be evaluated on the keys of params yet
   #Get the FinDomFunctions in the range of F that must be plugged into
   #the Functions in params
   params = d.params
@@ -386,7 +386,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     diagram_types = isempty(J) ? (FinSet{Int}, FinFunction{Int}) : (Any,Any)
     # Make sure the diagram to be limited is a FinCat{<:Int}.
     # Disable domain check because acsets don't store schema equations.
-    k = dom_to_graph(diagram(force(compose(Fc, X, strict=false), diagram_types...)))
+    k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
     #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
     if valtype(k.hom_map) <: SetFunctionCallable k = FinDomFunctorMap(k.ob_map,FinDomFunction{Int}[a for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))  end
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
@@ -402,7 +402,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     f_params = haskey(params, nameof(f)) ? Dict(nameof(codom(tgt_schema, f)) => params[nameof(f)](homfuns...)) : Dict()
     # Disable domain check for same reason.
     # Hand the Julia function form of the not-yet-defined components to compose
-    universal(compose(Ff, X, f_params, strict=false), limits[c], limits[d])
+    universal(compose(Ff, X, f_params), limits[c], limits[d])
   end
   Y = FinDomFunctor(mapvals(ob, limits), funcs, tgt_schema)
   return_limits ? (Y, limits) : Y
@@ -421,7 +421,7 @@ function migrate(X::FinDomFunctor, M::GlueSchemaMigration)
     Fc = ob_map(F, c)
     diagram_types = c isa AttrTypeExpr ? (TypeSet, SetFunction) :
                     (FinSet{Int}, FinFunction{Int})
-    k = dom_to_graph(diagram(force(compose(Fc, X, strict=false), diagram_types...)))
+    k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
     colimit(k, SpecializeColimit())
   end
   funcs = make_map(hom_generators(tgt_schema)) do f
@@ -431,7 +431,7 @@ function migrate(X::FinDomFunctor, M::GlueSchemaMigration)
     #of them if the domain is a non-singleton and there are any.
     f_params = haskey(params, f) ? map(x -> x(homfuns...), params[f]) :
                isempty(get_params(Ff)) ? Dict() : mapvals(x -> x(homfuns...), get_params(Ff))
-    universal(compose(Ff, X, f_params, strict=false), colimits[c], colimits[d])
+    universal(compose(Ff, X, f_params), colimits[c], colimits[d])
   end
   FinDomFunctor(mapvals(ob, colimits), funcs, tgt_schema)
 end
@@ -465,7 +465,7 @@ function migrate(X::FinDomFunctor, M::GlucSchemaMigration)
                    haskey(Ff_params, nameof(j)) ?
                    Dict(only(keys(components(diagram_map(Ffⱼ)))) => Ff_params[nameof(j)](homfuns...)) :
                    mapvals(x -> x(homfuns...), get_params(Ffⱼ)) : Dict{Int,Int}()
-      universal(compose(Ffⱼ, X, Ffⱼ_params, strict=false),
+      universal(compose(Ffⱼ, X, Ffⱼ_params),
         Fc_limits[j], Fd_limits[j′])
     end
     Ff_set = DiagramHom{id}(shape_map(Ff), component_funcs, Fc_set, Fd_set)

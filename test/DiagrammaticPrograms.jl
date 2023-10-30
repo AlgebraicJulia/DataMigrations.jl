@@ -3,7 +3,6 @@ using Test
 
 using Catlab
 using Catlab.Theories: FreeCategory, FreePointedSetCategory, FreePointedSetSchema
-using Catlab.Graphs.BasicGraphs: NamedGraph
 using Catlab.WiringDiagrams.CPortGraphs
 using DataMigrations
 using DataMigrations.DiagrammaticPrograms: get_keyword_arg_val, destructure_unary_call

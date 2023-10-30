@@ -19,6 +19,7 @@ using ..Migrations
 using ..Migrations: ConjQuery, GlueQuery, GlucQuery
 using GATlab
 import GATlab: Presentation
+import GATlab.Models.Presentations:construct_generator!,construct_generators!
 const DiagramGraph = NamedGraph{Symbol,Symbol}
 # Abstract syntax
 #################
@@ -328,7 +329,7 @@ function parse_gat_expr(C::FinCat, root_expr)
   function parse(expr)
     @match expr begin
       Expr(:curly, head::Symbol, args...) =>
-        invoke_term(pres.syntax, head, map(parse, args)...)
+        invoke_term(pres.syntax, head, map(parse, args))
       x::Symbol => generator(pres, x)
       _ => error("Invalid GAT expression $root_expr")
     end
@@ -380,11 +381,10 @@ function change_shape(simple::Bool,old_shape::FinCatPresentation)
 end
 change_shape(simple::Bool,old_shape) = old_shape
 function change_theory(syntax::Module,pres::Presentation{S,Name}) where {S,Name}
-  T = syntax.theory()
   pres_new = Presentation(syntax)
-  types = intersect(keys(pres_new.generators),keys(pres.generators))
-  for t in types map(pres.generators[t]) do x
-    add_generator!(pres_new,generator_switch_syntax(syntax,x)) end end
+  construct_generators!(pres,names,types,type_args) = map(eachindex(names)) do i construct_generator!(pres,names[i],types[i],type_args[i]) end
+  construct_generators!(pres_new,map(nameof,generators(pres)),map(gat_typeof,generators(pres)),
+                        map(x->map(nameof,x.type_args),generators(pres)))
   #XX: test on equations
   pres_new
 end
@@ -800,10 +800,10 @@ function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping, d::DiagramData{id},
   f_hom = mapvals(rhs -> parse_hom(d′, rhs), hom_rhs)
   DiagramHomData{id}(f_ob, f_hom,params)
 end
-function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping,
-                         c::Union{Ob,DiagramData{op}}, d′::DiagramData{id}) where Ob
+function parse_query_hom(C::FinCat{Obj}, ast::AST.Mapping,
+                         c::Union{Obj,DiagramData{op}}, d′::DiagramData{id}) where Obj
   assign = only(ast.assignments)
-  cob = c isa Ob ? c : FreeCategory.Ob(FreeCategory.Ob,:anon_ob)
+  cob = c isa Obj ? c : Ob(FreeCategory,:anon_ob)
   DiagramHomData{id}(Dict(cob => parse_diagram_ob_rhs(C, assign.rhs, c, d′)), Dict())
 end
 
@@ -957,17 +957,17 @@ promote_query_result(T, S, U) = U
 
 convert_query(::FinCat, ::Type{T}, x::S) where {T, S<:T} = x
 
-function convert_query(cat::C, ::Type{<:Diagram{T,C}}, x::Ob) where
-  {T, Ob, C<:FinCat{Ob}}
+function convert_query(cat::C, ::Type{<:Diagram{T,C}}, x::Obj) where
+  {T, Obj, C<:FinCat{Obj}}
   s = presentation(cat).syntax 
   p = Presentation(s)
-  add_generator!(p,s.Ob(s.Ob,nameof(x)))
+  add_generator!(p,Ob(s,nameof(x)))
   munit(Diagram{T}, cat, x, shape=FinCat(p))
 end
 function convert_query(::C, ::Type{<:GlucQuery{C}}, d::ConjQuery{C}) where C
   s = FreeCategory
   p = Presentation(s)
-  add_generator!(p,s.Ob(s.Ob,Symbol("anon_ob")))
+  add_generator!(p,Ob(s,Symbol("anon_ob")))
   munit(Diagram{id}, TypeCat(ConjQuery{C}, Any), d;shape=FinCat(p))
 end
 function convert_query(cat::C, ::Type{<:GlucQuery{C}}, d::GlueQuery{C}) where C
