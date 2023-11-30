@@ -18,6 +18,7 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 [compat]
 ACSets = "0.2.5"
 Catlab = "0.16.1"
+Debugger = "0.7"
 Documenter = "1"
 GATlab = "0.0.7"
 Literate = "2"
