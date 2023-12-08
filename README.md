@@ -5,4 +5,4 @@
 [![Code Coverage](https://codecov.io/gh/AlgebraicJulia/DataMigrations.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/AlgebraicJulia/DataMigrationse.jl)
 [![CI/CD](https://github.com/AlgebraicJulia/DataMigrations.jl/actions/workflows/julia_ci.yml/badge.svg)](https://github.com/AlgebraicJulia/DataMigrations.jl/actions/workflows/julia_ci.yml)
 
-This package is for contravariant data migrations using Catlab.
+This package is for contravariant data migrations using Catlab. Documentation is currently mainly via the tests but is under construction. 
