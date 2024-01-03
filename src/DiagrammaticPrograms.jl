@@ -1324,7 +1324,7 @@ end
 # Julia expression utilities
 ############################
 
-const Literal = Union{Number,Char,String,QuoteNode}
+const Literal = Union{Number,Char,String,QuoteNode,Symbol}
 
 get_literal(value::Literal) = value
 get_literal(node::QuoteNode) = node.value::Symbol

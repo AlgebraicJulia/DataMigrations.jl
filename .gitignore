@@ -26,3 +26,5 @@ deps/src/
 .DS_Store
 .vscode
 .ipynb_checkpoints
+
+Manifest.toml
