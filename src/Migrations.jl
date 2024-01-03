@@ -3,7 +3,7 @@ Contravariant complex data migrations.
 """
 module Migrations
 
-export migrate,migrate!,colimit_representables, QueryDiagram, DataMigration, colimit_representables, force, compose, DiagramHom, QueryDiagramHom
+export migrate,migrate!,colimit_representables, QueryDiagram, DataMigration, compose, DiagramHom, QueryDiagramHom
 
 using ACSets
 using ACSets.DenseACSets: constructor, datatypes
@@ -374,15 +374,6 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     Fc = ob_map(F, c)
     J = shape(Fc)
     # Must supply object/morphism types to handle case of empty diagram.
-    #=
-    diagram_types = if c isa AttrTypeExpr #Note this won't work if M constructed its own target schema!!!
-      (TypeSet, SetFunction)
-    elseif isempty(J)
-      (FinSet{Int}, FinFunction{Int})
-    else
-      (SetOb, FinDomFunction{Int})
-    end
-    =#
     diagram_types = isempty(J) ? (FinSet{Int}, FinFunction{Int}) : (Any,Any)
     # Make sure the diagram to be limited is a FinCat{<:Int}.
     # Disable domain check because acsets don't store schema equations.
@@ -439,9 +430,9 @@ end
 # Gluc migration
 #---------------
 """
-    migrate(M,X)
+    migrate(X,M)
 
-do the dang migration
+migrate the acset `X` to a new schema via the migration or functor `M`.
 """
 function migrate(X::FinDomFunctor, M::GlucSchemaMigration)
   F = functor(M)
@@ -479,7 +470,10 @@ const ConjMigrationFunctor{Dom,Codom} = DataMigrationFunctor{Dom,Codom,<:ConjSch
 const GlueMigrationFunctor{Dom,Codom} = DataMigrationFunctor{Dom,Codom,<:GlueSchemaMigration}
 const GlucMigrationFunctor{Dom,Codom} = DataMigrationFunctor{Dom,Codom,<:GlucSchemaMigration}
 
-""" Interpret conjunctive data migration as a colimit of representables.
+""" 
+    colimit_representables(M::DeltaSchemaMigration, y)
+
+Interpret conjunctive data migration as a colimit of representables.
 
 Given a conjunctive data migration (a functor `J → Diag{op}(C)`) and the Yoneda
 embedding for `C` (a functor `op(C) → C-Set` computed via `yoneda`),
