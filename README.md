@@ -22,7 +22,7 @@ end
 
 The above example leaves out the key specification of in which variance of diagram category the result is intended 
 to lie. The pseudo-macros `@join` and `@glue` in front of a diagram indicate that the result should be interpreted 
-in the contravariant, respectively covariant, diagram categories of the codomain. 
+in the contravariant, respectively covariant, diagram categories of the codomain. This is critical for 
 
 
 
