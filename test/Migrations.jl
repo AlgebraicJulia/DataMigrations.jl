@@ -481,5 +481,26 @@ expected = @acset WeightedGraph{Float64} begin
 end
 @test is_isomorphic(ob_map(colimit_representables(d, yWG), :I), expected)
 
+# Can do a complex migration into a schema with no edges.
+@present SchNattrSet(FreeSchema) begin
+  X::Ob
+  A::AttrType
+end
+M = @migration SchWeightedGraph SchNattrSet begin
+  V => X
+  E => X 
+  src => id(X)
+  tgt => id(X)
+  Weight => A
+  weight => (x->7.0)
+end
+@acset_type NattrSet(SchNattrSet)
+S = @acset NattrSet{Float64} begin
+  X = 5
+end
+WG = migrate(WeightedGraph{Float64}, S, M)
+@test nparts(WG,:V) == nparts(WG,:E) == 5
+@test subpart(WG,:weight) == fill(7.0,5)
+
 
 end#module

@@ -251,6 +251,7 @@ end)
 
 @test functor(M) == FinDomFunctor(Dict(:E=>:E,:V=>:V), Dict(:tgt=>:src,:src=>:tgt), J, FinCat(SchGraph))
 
+
 # Conjunctive migration
 #----------------------
 
