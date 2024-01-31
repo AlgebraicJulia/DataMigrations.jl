@@ -488,7 +488,7 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
   isnothing(hom_parser) && (hom_parser = (f,x,y) -> parse_hom(C,f))
   g, eqs = Presentation(FreeSchema), Pair[] 
   F_ob, F_hom, params = Dict{GATExpr,Any}(), Dict{GATExpr,Any}(), Dict{Symbol,Union{Literal,Function}}()
-  mornames = map(nameof,hom_generators(C))
+  mornames = Symbol[nameof(x) for x in hom_generators(C)]
   for stmt in statements
     @match stmt begin
       AST.ObOver(x, X) => begin
@@ -682,7 +682,7 @@ end
 function parse_migration(tgt_schema::Presentation, src_schema::Presentation,
                          ast::AST.Mapping;simple::Bool=true)
   D, C = simple ? (FinCat(tgt_schema), FinCat(src_schema)) : (FinCat(change_theory(FreePointedSetSchema,tgt_schema)), FinCat(change_theory(FreePointedSetSchema,src_schema)))
-  homnames = map(nameof,hom_generators(C))
+  homnames = Symbol[nameof(x) for x in hom_generators(C)]
   params = Dict{Symbol,Union{Literal,Function}}()
   ob_rhs, hom_rhs = make_ob_hom_maps(D, ast, missing_hom=true)
   F_ob = mapvals(expr -> parse_query(C, expr), ob_rhs)
@@ -787,7 +787,7 @@ function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping, d::DiagramData{id},
                          d′::Union{Ob,DiagramData{op},DiagramData{id}}) where Ob
   ob_rhs, hom_rhs = make_ob_hom_maps(shape(d), ast,
                                      allow_missing=!(d′ isa DiagramData{id}))
-  homnames = map(nameof,hom_generators(C))                                 
+  homnames = Symbol[nameof(x) for x in hom_generators(C)]
   params = Dict{Symbol,Union{Literal,Function}}()
   f_ob = mapvals(ob_rhs, keys=true) do j, rhs
     if rhs isa AST.MixedOb
