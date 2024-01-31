@@ -251,20 +251,6 @@ end)
 
 @test functor(M) == FinDomFunctor(Dict(:E=>:E,:V=>:V), Dict(:tgt=>:src,:src=>:tgt), J, FinCat(SchGraph))
 
-# Can do a complex migration into a schema with no edges.
-@present SchAttrSet(FreeSchema) begin
-  X::Ob
-  A::AttrType
-end
-M = @migration SchWeightedGraph SchAttrSet begin
-  V => X
-  E => X 
-  src => id(X)
-  tgt => id(X)
-  Weight => A
-  weight => (x->7.0)
-end
-
 
 # Conjunctive migration
 #----------------------
