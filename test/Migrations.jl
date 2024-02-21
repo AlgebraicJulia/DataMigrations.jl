@@ -502,5 +502,52 @@ WG = migrate(WeightedGraph{Float64}, S, M)
 @test nparts(WG,:V) == nparts(WG,:E) == 5
 @test subpart(WG,:weight) == fill(7.0,5)
 
+## Can migrate inserting default values for previously missing attributes.
+@present SchAttrSet(FreeSchema) begin
+  X::Ob
+  Label::AttrType
+  hasLabel::Attr(X, Label)
+
+  MyBool::AttrType
+  MyString::AttrType
+end
+@present SchAttrSet2(FreeSchema) begin
+  X::Ob
+
+  Y::Ob
+  m::Hom(Y, X)
+
+  A::AttrType
+  f::Attr(Y, A)
+  B::AttrType
+  g::Attr(Y, B)
+end
+
+M = @migration SchAttrSet2 SchAttrSet begin
+  X => X
+
+  Y => @join begin
+    x::X
+    L::Label
+    (hl:x→L) :: hasLabel
+    (foo:x→L) :: (x->"foo")
+  end
+  m => x
+
+  A => MyBool
+  f => (x |> (a -> false))
+  B => MyString
+  g => (x |> (a -> "unknown"))
+end
+@acset_type AttrSet(SchAttrSet)
+T = @acset AttrSet{String, Bool, String} begin
+  X = 2
+  hasLabel = ["foo", "bar"]
+end
+@acset_type AttrSet2(SchAttrSet2)
+S = migrate(AttrSet2{Bool, String}, T, M)
+@test length(parts(S,:Y)) == 1
+@test subpart(S,:f) == [false]
+@test subpart(S,:g) == ["unknown"]
 
 end#module

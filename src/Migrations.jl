@@ -182,12 +182,13 @@ function param_compose(α::FinTransformation, H::Functor,params)
     s, t = ob_map(compose(F,H),compindex), 
     ob_map(compose(G,H),compindex)
     if head(f) == :zeromap
-    func = params[i]
-    FinDomFunction(func,s,t)
+      func = params[i]
+      FinDomFunction(func,s,t)
     #may need to population params with identities
     else
-    func = haskey(params,i) ? SetFunction(params[i],t,t) : SetFunction(identity,t,t)
-    hom_map(H,f)⋅func
+      Hf = hom_map(H,f)
+      func = haskey(params,i) ? SetFunction(params[i],codom(Hf),t) : SetFunction(identity,t,t)
+      Hf⋅func
     end
   end
   FinTransformation(new_components,compose(F, H), compose(G, H))
@@ -399,7 +400,14 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
   end
   funcs = make_map(hom_generators(tgt_schema)) do f
     Ff, c, d = hom_map(F, f), dom(tgt_schema, f), codom(tgt_schema, f)
-    f_params = haskey(params, nameof(f)) ? Dict(nameof(codom(tgt_schema, f)) => params[nameof(f)](homfuns...)) : Dict()
+    if haskey(params, nameof(f)) 
+      #This assumes that `d` is an AttrType and that (thus, as of Feb '24) it is mapped to a trivial diagram, hence the `only` call.
+      #I'm not sure what this will look like once AttrTypes can be mapped to nontrivial diagrams; maybe the value at `nameof(f)` will
+      #itself be a dict.
+      f_params = Dict(nameof(only(collect_ob(ob_map(F,d)))) => params[nameof(f)](homfuns...))
+    else 
+      f_params = Dict()
+    end 
     # Disable domain check for same reason.
     # Hand the Julia function form of the not-yet-defined components to compose
     universal(compose(Ff, X, f_params), limits[c], limits[d])
