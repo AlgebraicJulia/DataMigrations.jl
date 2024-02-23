@@ -374,22 +374,10 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
   limits = make_map(ob_generators(tgt_schema)) do c
     Fc = ob_map(F, c)
     J = shape(Fc)
-    # Must supply object/morphism types to handle case of empty diagram.
-    #=
-    diagram_types = if c isa AttrTypeExpr #Note this won't work if M constructed its own target schema!!!
-      (TypeSet, SetFunction)
-    elseif isempty(J)
-      (FinSet{Int}, FinFunction{Int})
-    else
-      (SetOb, FinDomFunction{Int})
-    end
-    =#
-    diagram_types = isempty(J) ? (FinSet{Int}, FinFunction{Int}) : (Any,Any)
-    # Make sure the diagram to be limited is a FinCat{<:Int}.
-    # Disable domain check because acsets don't store schema equations.
-    k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
-    #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
-    if valtype(k.hom_map) <: SetFunctionCallable k = FinDomFunctorMap(k.ob_map,FinDomFunction{Int}[a for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))  end
+    k = dom_to_graph(diagram(force(compose(Fc, X))))
+    #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not,
+    #and similarly for identities.
+    k = FinDomFunctorMap(k.ob_map,FinDomFunction{Int}[a for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int})) 
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
     if tabular
       names = (ob_generator_name(J, j) for j in ob_generators(J))
