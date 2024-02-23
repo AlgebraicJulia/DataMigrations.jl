@@ -550,4 +550,93 @@ S = migrate(AttrSet2{Bool, String}, T, M)
 @test subpart(S,:f) == [false]
 @test subpart(S,:g) == ["unknown"]
 
+
+
+#Handle identity morphisms when building diagram to limit
+
+@present OntBlocksworld(FreeSchema) begin
+  Block::Ob  # rename Thing --> Block
+
+  # Gripper::Ob
+  # isHolding::Hom(Gripper, Block)  # add attribute
+
+  InOn::Ob
+  inOn_l::Hom(InOn, Block)  # rename Thing --> Block
+  inOn_r::Hom(InOn, Block)  # rename Thing --> Block
+
+  Clear::AttrType
+  isClear::Attr(Block, Clear)  # add attribute
+  onTable::AttrType
+  isOnTable::Attr(Block, onTable)  # add attribute
+
+  # AttrTypes for datatypes (placeholder until Kevin can get this to work)
+  MyBool::AttrType
+  MyString::AttrType
+end
+@acset_type Blocksworld(OntBlocksworld)
+
+
+@present OntTowersOfHanoi(FreeSchema) begin
+  Disk::Ob
+  Peg::Ob
+
+  diskIsOnPeg::Hom(Disk, Peg)
+
+  Smaller::Ob  # add relation
+  isSmaller_l::Hom(Smaller, Disk)
+  isSmaller_r::Hom(Smaller, Disk)
+
+  Clear::AttrType
+  isClear::Attr(Disk, Clear)
+
+  # AttrTypes for datatypes (placeholder until Kevin can get this to work)
+  MyBool::AttrType
+  MyString::AttrType
+end
+@acset_type TowersOfHanoi(OntTowersOfHanoi)
+yTowersOfHanoi = yoneda(TowersOfHanoi{Bool,Bool,String})
+
+F = @migration OntBlocksworld OntTowersOfHanoi begin
+  Block => Disk
+  InOn => @join begin
+    disk1::Disk
+    disk2::Disk
+    peg::Peg
+    diskIsOnPeg(disk1) == peg
+    diskIsOnPeg(disk2) == peg
+    smaller::Smaller
+    isSmaller_l(smaller) == disk1  # disk1 < disk2
+    isSmaller_r(smaller) == disk2
+  end  # a block is on another if it is smaller and on the same peg
+  inOn_l => disk1
+  inOn_r => disk2
+  Clear => Clear
+  isClear => isClear
+  onTable => MyBool
+  isOnTable => (x -> false)  # it is on the table if it is the largest disk on a peg.
+  MyBool => MyBool
+  MyString => MyString
+end
+
+data = @acset_colim yTowersOfHanoi begin
+  (disk1, disk2, disk3)::Disk
+  (peg1, peg2)::Peg
+  (smaller1, smaller2, smaller3)::Smaller
+  isSmaller_l(smaller1) == disk1  # disk1 < disk2
+  isSmaller_r(smaller1) == disk2
+  isSmaller_l(smaller2) == disk2  # disk2 < disk3
+  isSmaller_r(smaller2) == disk3
+  isSmaller_l(smaller3) == disk1  # disk1 < disk3
+  isSmaller_r(smaller3) == disk3
+  diskIsOnPeg(disk1) == peg1
+  diskIsOnPeg(disk2) == peg1
+  diskIsOnPeg(disk3) == peg2
+  isClear(disk1) == true
+  isClear(disk2) == false
+  isClear(disk3) == true
+end
+
+new_data = migrate(Blocksworld, data, F)
+@test length(parts(new_data,:Block)) == 3
+@test subpart(new_data,:isOnTable) == [false, false, false]
 end#module
