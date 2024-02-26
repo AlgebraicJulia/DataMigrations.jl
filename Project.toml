@@ -2,7 +2,7 @@ name = "DataMigrations"
 uuid = "0c4ad18d-0c49-4bc2-90d5-5bca8f00d6ae"
 license = "MIT"
 authors = ["Kevin Arlin <kevin@topos.institute", "Evan Patterson <evan@topos.institute>"]
-version = "0.0.2"
+version = "0.0.3"
 
 [deps]
 ACSets = "227ef7b5-1206-438b-ac65-934d6da304b8"
