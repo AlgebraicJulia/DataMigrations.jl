@@ -388,8 +388,9 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     # Make sure the diagram to be limited is a FinCat{<:Int}.
     # Disable domain check because acsets don't store schema equations.
     k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
+    #get rid of any varfunctions and
     #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
-    if valtype(k.hom_map) <: SetFunctionCallable k = FinDomFunctorMap(k.ob_map,FinDomFunction{Int}[a for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))  end
+    k = FinDomFunctorMap(SetOb.(k.ob_map),FinDomFunction{Int}[FinDomFunction(a) for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
     if tabular
       names = (ob_generator_name(J, j) for j in ob_generators(J))
