@@ -550,4 +550,39 @@ S = migrate(AttrSet2{Bool, String}, T, M)
 @test subpart(S,:f) == [false]
 @test subpart(S,:g) == ["unknown"]
 
+
+# Can migrate acsets with some attrvar values.
+@present SchWithLabel(FreeSchema) begin
+  X::Ob
+  Label::AttrType
+  hasLabel::Attr(X, Label)
+end
+@acset_type WithLabel(SchWithLabel)
+yWithLabel = yoneda(WithLabel{String})
+
+@present SchSplit(FreeSchema) begin
+  A::Ob
+  B::Ob
+end
+@acset_type Split(SchSplit)
+
+M = @migration SchSplit SchWithLabel begin
+  A => @join begin
+    x::X
+    L::Label
+    (f:x → L)::hasLabel
+    (A:x → L)::(x -> "A")
+  end
+  B => @join begin
+    x::X
+    L::Label
+    (f:x → L)::hasLabel
+    (A:x → L)::(x -> "B")
+  end
+end
+data = @acset_colim yWithLabel begin x::X end
+result = migrate(Split, data, M)
+@test result == @acset Split begin end
+
+
 end#module

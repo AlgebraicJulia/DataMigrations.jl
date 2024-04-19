@@ -390,7 +390,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
     #get rid of any varfunctions and
     #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
-    k = FinDomFunctorMap(SetOb.(k.ob_map),FinDomFunction{Int}[FinDomFunction(a) for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))
+    k = isempty(J) ? k : FinDomFunctorMap(SetOb.(k.ob_map),FinDomFunction{Int}[FinDomFunction(a) for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
     if tabular
       names = (ob_generator_name(J, j) for j in ob_generators(J))
@@ -430,7 +430,7 @@ function migrate(X::FinDomFunctor, M::GlueSchemaMigration)
     Fc = ob_map(F, c)
     diagram_types = c isa AttrTypeExpr ? (TypeSet, SetFunction) :
                     (FinSet{Int}, FinFunction{Int})
-    k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
+    k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...))) #XX: might be issues with attrvars here
     colimit(k, SpecializeColimit())
   end
   funcs = make_map(hom_generators(tgt_schema)) do f
