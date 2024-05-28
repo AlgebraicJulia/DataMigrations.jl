@@ -21,6 +21,7 @@ using GATlab
 import GATlab: Presentation
 import GATlab.Models.Presentations:construct_generator!,construct_generators!
 const DiagramGraph = NamedGraph{Symbol,Symbol}
+
 # Abstract syntax
 #################
 
@@ -56,7 +57,7 @@ end
   HomOver(name::Symbol, src::Symbol, tgt::Symbol, over::HomExpr)
   AttrOver(name::Symbol, src::Symbol,tgt::Symbol,aux_func_def::Expr,mod::Module)#XX:make JuliaCode
   HomAndAttrOver(lhs::HomOver,rhs::AttrOver)
-  AssignLiteral(name::Symbol, value)
+  AssignValue(name::Symbol, value)
 end
 
 @data CatExpr <: DiagramExpr begin
@@ -464,7 +465,7 @@ Some care must exercised when defining morphisms between diagrams with anonymous
 objects, since they cannot be referred to by name.
 """
 macro free_diagram(cat, body)
-  ast = AST.Diagram(parse_diagram_ast(body, free=true))
+  ast = AST.Diagram(parse_diagram_ast(body, free=true, mod=__module__))
   :(parse_diagram($(esc(cat)), $ast))
 end
 
@@ -487,7 +488,7 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
   isnothing(ob_parser) && (ob_parser = x -> parse_ob(C, x))
   isnothing(hom_parser) && (hom_parser = (f,x,y) -> parse_hom(C,f))
   g, eqs = Presentation(FreeSchema), Pair[] 
-  F_ob, F_hom, params = Dict{GATExpr,Any}(), Dict{GATExpr,Any}(), Dict{Symbol,Union{Literal,Function}}()
+  F_ob, F_hom, params = Dict{GATExpr,Any}(), Dict{GATExpr,Any}(), Dict{Symbol,Any}()
   mornames = Symbol[nameof(x) for x in hom_generators(C)]
   for stmt in statements
     @match stmt begin
@@ -524,9 +525,8 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
         aux_func = make_func(mod,expr,mornames)
         params[nameof(e)] = aux_func
       end
-      #x should be a Symbol
-      AST.AssignLiteral(x, value) => begin
-        haskey(params, x) && error("Literal already assigned to $x")
+      AST.AssignValue(x, value) => begin
+        haskey(params, x) && error("Julia value already assigned to $x")
         params[x] = value
       end
       AST.HomEq(lhs, rhs) =>
@@ -648,10 +648,10 @@ Uses the output of `yoneda`:
 end
 """
 macro acset_colim(yon, body)
-  body2 = quote
+  body = quote
     I => @join $body
   end
-  ast = AST.Diagram(parse_diagram_ast(body2))
+  ast = AST.Diagram(parse_diagram_ast(body, mod=__module__))
   quote
     p = Presentation(acset_schema(last(first($(esc(yon)).ob_map))))
     tmp = parse_migration(p, $ast)
@@ -991,7 +991,8 @@ end
 
 """ Parse category or diagram from Julia expression to AST.
 """
-function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,mod::Module=Main)
+function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,
+                           mod::Module=Main)
   if preprocess
     body = reparse_arrows(body)
   end
@@ -1030,18 +1031,23 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,m
       Expr(:(::), Expr(:call, :(:), f::Symbol,
       Expr(:call, :(→), x::Symbol, y::Symbol)), h) => begin
         parse_hom_over(f,x,y,state.ob_over[x],state.ob_over[y],h,mod=mod)
-    end
-      
+      end
       # (x → y) => h
       # (x → y)::h
       Expr(:call, :(=>), Expr(:call, :(→), x::Symbol, y::Symbol), h) ||
       Expr(:(::), Expr(:call, :(→), x::Symbol, y::Symbol), h) => 
         parse_hom_over(gen_anonhom!(state),x,y,state.ob_over[x],state.ob_over[y],h,mod=mod)
+
       # x == "foo"
       # "foo" == x
-     Expr(:call, :(==), x::Symbol, value::Literal) ||
-     Expr(:call, :(==), value::Literal, x::Symbol) =>
-       [AST.AssignLiteral(x, get_literal(value))]
+      Expr(:call, :(==), x::Symbol, value::Literal) ||
+      Expr(:call, :(==), value::Literal, x::Symbol) =>
+        [AST.AssignValue(x, get_literal(value))]
+      # x == $(...)
+      # $(...) == x
+      Expr(:call, :(==), x::Symbol, Expr(:$, value_expr)) ||
+      Expr(:call, :(==), Expr(:$, value_expr)) =>
+        [AST.AssignValue(x, mod.eval(value_expr))]
      
       # h(x) == y
       # y == h(x)
@@ -1050,17 +1056,27 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,m
          h, x = destructure_unary_call(call) 
          X, Y, z = state.ob_over[x], state.ob_over[y], gen_anonhom!(state)
          [AST.HomOver(z, x, y, parse_hom_ast(h, X, Y,mod=mod))]
-      end
+       end
       # h(x) == "foo"
       # "foo" == h(x)
-     (Expr(:call, :(==), call::Expr, value::Literal) ||
-      Expr(:call, :(==), value::Literal, call::Expr)) && if free end => begin
-         (h, x), y, z = destructure_unary_call(call), gen_anonob!(state), gen_anonhom!(state)
-         X = state.ob_over[x]
+      (Expr(:call, :(==), call::Expr, value::Literal) ||
+       Expr(:call, :(==), value::Literal, call::Expr)) && if free end => begin
+         h, x = destructure_unary_call(call)
+         X, y, z = state.ob_over[x], gen_anonob!(state), gen_anonhom!(state)
          [AST.ObOver(y, nothing),
-          AST.AssignLiteral(y, get_literal(value)),
+          AST.AssignValue(y, get_literal(value)),
           AST.HomOver(z, x, y, parse_hom_ast(h, X))]
-     end
+       end
+      # h(x) == $(...)
+      # $(...) == h(x)
+      (Expr(:call, :(==), call::Expr, Expr(:$, value_expr)) ||
+       Expr(:call, :(==), Expr(:$, value_expr), call::Expr)) && if free end => begin
+         h, x = destructure_unary_call(call)
+         X, y, z = state.ob_over[x], gen_anonob!(state), gen_anonhom!(state)
+         [AST.ObOver(y, nothing),
+          AST.AssignValue(y, mod.eval(value_expr)),
+          AST.HomOver(z, x, y, parse_hom_ast(h, X))]
+       end
 
       # h(x) == k(y)
       Expr(:call, :(==), lhs::Expr, rhs::Expr) && if free end => begin
@@ -1072,6 +1088,7 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,m
          AST.HomOver(p, x, z, parse_hom_ast(h, X,mod=mod)),
          AST.HomOver(q, y, z, parse_hom_ast(k, Y,mod=mod))]
       end
+
       # f == g
       Expr(:call, :(==), lhs, rhs) && if !free end =>
         [AST.HomEq(parse_hom_ast(lhs,mod=mod), parse_hom_ast(rhs,mod=mod))]
@@ -1324,7 +1341,7 @@ end
 # Julia expression utilities
 ############################
 
-const Literal = Union{Number,Char,String,QuoteNode,Symbol}
+const Literal = Union{Bool,Number,Char,String,QuoteNode,Symbol}
 
 get_literal(value::Literal) = value
 get_literal(node::QuoteNode) = node.value::Symbol

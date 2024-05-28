@@ -194,14 +194,14 @@ end
 @test only(collect_hom(d)) == compose(SchDDS[:Φ], SchDDS[:Φ])
 
 # Diagrams with parameters
- #-------------------------
+#-------------------------
 
  d = @free_diagram SchWeightedGraph begin
   v::V
   (e1, e2)::E
   tgt(e1) == v
   src(e2) == v
-  w :: Weight
+  w::Weight
   w == 5.0
   weight(e1) == w 
   weight(e2) == w
@@ -219,6 +219,25 @@ end
 @test sort(nameof.(collect_ob(d))) == [:E, :E, :V, :Weight, :Weight]
 @test sort(nameof.(collect_hom(d))) == [:src, :tgt,:weight, :weight]
 @test sort(collect(values(d.params))) == [0.5,1.5]
+
+struct Box{Value}
+  value::Value
+end
+
+d = @free_diagram SchWeightedGraph begin
+  e::E
+  w::Weight
+  weight(e) == w
+  w == $(Box(0.5))
+end
+@test d.params == Dict(:w => Box(0.5))
+
+d = @free_diagram SchWeightedGraph begin
+  e::E
+  weight(e) == $(Box(0.5))
+end
+@test only(values(d.params)) == Box(0.5)
+
 # Migrations
 ############
 
