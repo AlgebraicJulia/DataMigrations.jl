@@ -683,7 +683,7 @@ function parse_migration(tgt_schema::Presentation, src_schema::Presentation,
                          ast::AST.Mapping;simple::Bool=true)
   D, C = simple ? (FinCat(tgt_schema), FinCat(src_schema)) : (FinCat(change_theory(FreePointedSetSchema,tgt_schema)), FinCat(change_theory(FreePointedSetSchema,src_schema)))
   homnames = Symbol[nameof(x) for x in hom_generators(C)]
-  params = Dict{Symbol,Union{Literal,Function}}()
+  params = Dict{Symbol,Any}()
   ob_rhs, hom_rhs = make_ob_hom_maps(D, ast, missing_hom=true)
   F_ob = mapvals(expr -> parse_query(C, expr), ob_rhs)
   F_hom = mapvals(hom_rhs, keys=true) do f, expr
@@ -788,7 +788,7 @@ function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping, d::DiagramData{id},
   ob_rhs, hom_rhs = make_ob_hom_maps(shape(d), ast,
                                      allow_missing=!(d′ isa DiagramData{id}))
   homnames = Symbol[nameof(x) for x in hom_generators(C)]
-  params = Dict{Symbol,Union{Literal,Function}}()
+  params = Dict{Symbol,Any}()
   f_ob = mapvals(ob_rhs, keys=true) do j, rhs
     if rhs isa AST.MixedOb
       aux_func = make_func(rhs.jcode.mod,rhs.jcode.code,homnames)
@@ -1341,7 +1341,9 @@ end
 # Julia expression utilities
 ############################
 
-const Literal = Union{Bool,Number,Char,String,QuoteNode,Symbol}
+# Literals recognized by the Julia parser, where quote nodes will be accepted
+# only if they contain symbols, hence are symbol literals.
+const Literal = Union{Bool,Number,Char,String,QuoteNode}
 
 get_literal(value::Literal) = value
 get_literal(node::QuoteNode) = node.value::Symbol
