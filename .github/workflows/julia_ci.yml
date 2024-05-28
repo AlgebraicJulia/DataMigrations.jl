@@ -41,8 +41,6 @@ jobs:
     uses: AlgebraicJulia/.github/.github/workflows/julia_ci.yml@main
     secrets: inherit
     with:
-      version: "1.10.0-beta2"
-      test_versions: "['1.10.0-beta2']"
       docs: false
   CompatHelper:
     if: github.event_name == 'schedule'
