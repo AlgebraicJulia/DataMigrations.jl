@@ -57,7 +57,7 @@ end
   HomOver(name::Symbol, src::Symbol, tgt::Symbol, over::HomExpr)
   AttrOver(name::Symbol, src::Symbol,tgt::Symbol,aux_func_def::Expr,mod::Module)#XX:make JuliaCode
   HomAndAttrOver(lhs::HomOver,rhs::AttrOver)
-  AssignLiteral(name::Symbol, value)
+  AssignValue(name::Symbol, value)
 end
 
 @data CatExpr <: DiagramExpr begin
@@ -525,8 +525,8 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
         aux_func = make_func(mod,expr,mornames)
         params[nameof(e)] = aux_func
       end
-      AST.AssignLiteral(x, value) => begin
-        haskey(params, x) && error("Literal already assigned to $x")
+      AST.AssignValue(x, value) => begin
+        haskey(params, x) && error("Julia value already assigned to $x")
         params[x] = value
       end
       AST.HomEq(lhs, rhs) =>
@@ -1042,12 +1042,12 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,
       # "foo" == x
       Expr(:call, :(==), x::Symbol, value::Literal) ||
       Expr(:call, :(==), value::Literal, x::Symbol) =>
-        [AST.AssignLiteral(x, get_literal(value))]
+        [AST.AssignValue(x, get_literal(value))]
       # x == $(...)
       # $(...) == x
       Expr(:call, :(==), x::Symbol, Expr(:$, value_expr)) ||
       Expr(:call, :(==), Expr(:$, value_expr)) =>
-        [AST.AssignLiteral(x, mod.eval(value_expr))]
+        [AST.AssignValue(x, mod.eval(value_expr))]
      
       # h(x) == y
       # y == h(x)
@@ -1064,7 +1064,7 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,
          h, x = destructure_unary_call(call)
          X, y, z = state.ob_over[x], gen_anonob!(state), gen_anonhom!(state)
          [AST.ObOver(y, nothing),
-          AST.AssignLiteral(y, get_literal(value)),
+          AST.AssignValue(y, get_literal(value)),
           AST.HomOver(z, x, y, parse_hom_ast(h, X))]
        end
       # h(x) == $(...)
@@ -1074,7 +1074,7 @@ function parse_diagram_ast(body::Expr; free::Bool=false, preprocess::Bool=true,
          h, x = destructure_unary_call(call)
          X, y, z = state.ob_over[x], gen_anonob!(state), gen_anonhom!(state)
          [AST.ObOver(y, nothing),
-          AST.AssignLiteral(y, mod.eval(value_expr)),
+          AST.AssignValue(y, mod.eval(value_expr)),
           AST.HomOver(z, x, y, parse_hom_ast(h, X))]
        end
 
