@@ -318,9 +318,9 @@ const GlueSchemaMigration{D<:FinCat,C<:FinCat} =
 const GlucSchemaMigration{D<:FinCat,C<:FinCat} =
   ContravariantMigration{<:FinDomFunctor{D,<:TypeCat{<:GlucQuery{C}}}}
 
-
-  # Contravariant migration
+# Contravariant migration
 #########################
+
 function migrate(X::FinDomFunctor,M::ComplexDeltaMigration)
     F = functor(M)
     tgt_schema = dom(F)
@@ -360,12 +360,12 @@ function get_src_schema(F::Functor{<:Cat,<:TypeCat{<:Diagram}})
     get_src_schema(diagram(ob_map(F,obs[1])))
 end
 get_src_schema(F::Functor{<:Cat,<:FinCat}) = codom(F)
-#what the hell happened to the indentation
 
 # Conjunctive migration
 #----------------------
+
 function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
-  return_limits::Bool=false, tabular::Bool=false)
+                 return_limits::Bool=false, tabular::Bool=false)
   F = functor(M)
   tgt_schema = dom(F)
   homs = hom_generators(get_src_schema(F))
@@ -413,7 +413,8 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     # Hand the Julia function form of the not-yet-defined components to compose
     universal(compose(Ff, X, f_params), limits[c], limits[d])
   end
-  Y = FinDomFunctor(mapvals(ob, limits), funcs, tgt_schema)
+  cod = isempty(limits) ? TypeCat(FinSet{Int}, FinDomFunction{Int}) : nothing
+  Y = FinDomFunctor(mapvals(ob, limits), funcs, tgt_schema, cod)
   return_limits ? (Y, limits) : Y
 end
 

@@ -216,6 +216,13 @@ h′ = @acset Graph begin
 end
 @test h == h′
 
+# Discrete graph on one vertex.
+g = @migrate Graph set begin
+  V => @unit
+  E => @empty
+end
+@test g == Graph(1)
+
 # Migrations with Code
 ######################
 
