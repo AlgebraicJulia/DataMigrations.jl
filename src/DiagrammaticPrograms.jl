@@ -945,6 +945,8 @@ promote_query_rule(::Type{<:GlueQuery{C}}, ::Type{<:Ob}) where {Ob,C<:FinCat{Ob}
   GlueQuery{C}
 promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:Ob}) where {Ob,C<:FinCat{Ob}} =
   GlucQuery{C}
+promote_query_rule(::Type{<:GlueQuery{C}}, ::Type{<:ConjQuery{C}}) where C =
+  GlucQuery{C}
 promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:ConjQuery{C}}) where C =
   GlucQuery{C}
 promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:GlueQuery{C}}) where C =
@@ -968,7 +970,7 @@ function convert_query(::C, ::Type{<:GlucQuery{C}}, d::ConjQuery{C}) where C
   s = FreeCategory
   p = Presentation(s)
   add_generator!(p,Ob(s,Symbol("anon_ob")))
-  munit(Diagram{id}, TypeCat(ConjQuery{C}, Any), d;shape=FinCat(p))
+  munit(Diagram{id}, TypeCat(ConjQuery{C}, Any), d; shape=FinCat(p))
 end
 function convert_query(cat::C, ::Type{<:GlucQuery{C}}, d::GlueQuery{C}) where C
   J = shape(d)
@@ -979,7 +981,7 @@ function convert_query(cat::C, ::Type{<:GlucQuery{C}}, d::GlueQuery{C}) where C
     munit(Diagram{op}, cat, hom_map(d, h),
           dom_shape=new_ob[dom(J,h)], codom_shape=new_ob[codom(J,h)])
   end
-  Diagram{id}(FinDomFunctor(new_ob, new_hom, J))
+  Diagram{id}(FinDomFunctor(new_ob, new_hom, J, TypeCat(ConjQuery{C}, Any)))
 end
 function convert_query(cat::C, ::Type{<:GlucQuery{C}}, x::Ob) where
     {Ob, C<:FinCat{Ob}}
