@@ -187,7 +187,7 @@ function param_compose(α::FinTransformation, H::Functor,params)
     #may need to population params with identities
     else
       Hf = hom_map(H,f)
-      func = haskey(params,i) ? SetFunction(params[i],codom(Hf),t) : SetFunction(identity,t,t)
+      func = haskey(params,i) ? SetFunction(params[i],codom(Hf),t) : id(t)
       Hf⋅func
     end
   end
@@ -390,6 +390,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
     #get rid of any varfunctions and
     #cover for the annoying fact that FinDomFunctions containing a lambda are SetFunctionCallables but FinDomFunctionMaps are not.
+    #this isn't gonna work if k includes an attribute that should really include attrvars...
     k = isempty(J) ? k : FinDomFunctorMap(SetOb.(k.ob_map),FinDomFunction{Int}[FinDomFunction(a) for a in k.hom_map],k.dom,TypeCat(SetOb,FinDomFunction{Int}))
     lim = limit(k, SpecializeLimit(fallback=ToBipartiteLimit()))
     if tabular
@@ -411,7 +412,8 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     end 
     # Disable domain check for same reason.
     # Hand the Julia function form of the not-yet-defined components to compose
-    universal(compose(Ff, X, f_params), limits[c], limits[d])
+    t = compose(Ff, X, f_params)
+    universal(t, limits[c], limits[d])
   end
   cod = isempty(limits) ? TypeCat(FinSet{Int}, FinDomFunction{Int}) : nothing
   Y = FinDomFunctor(mapvals(ob, limits), funcs, tgt_schema, cod)
