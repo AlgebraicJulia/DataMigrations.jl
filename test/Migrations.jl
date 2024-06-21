@@ -591,5 +591,59 @@ data = @acset_colim yWithLabel begin x::X end
 result = migrate(Split, data, M)
 @test result == @acset Split begin end
 
+#Conjunctive migrations including attrvars
+@present SchWithLabel(FreeSchema) begin
+  X::Ob
+  Label::AttrType
+  hasLabel::Attr(X, Label)
+end
+@acset_type WithLabel(SchWithLabel)
+yWithLabel = yoneda(WithLabel{String})
+
+@present SchSplitWithDefault(FreeSchema) begin
+  Thing::Ob
+  A::Ob
+  B::Ob
+
+  aIsThing::Hom(A, Thing)
+  bIsThing::Hom(B, Thing)
+end
+@acset_type SplitWithDefault(SchSplitWithDefault)
+
+M1 = @migration SchSplitWithDefault SchWithLabel begin
+  Thing => X
+  A => @join begin
+    x::X
+    L::Label
+    (f:x → L)::hasLabel
+    (A:x → L)::(x -> "A")
+  end
+  aIsThing => x
+  B => @join begin
+    x::X
+    L::Label
+    (f:x → L)::hasLabel
+    (A:x → L)::(x -> "B")
+  end
+  bIsThing => x
+end
+
+data1 = @acset_colim yWithLabel begin
+  x::X
+  hasLabel(x) == "A"
+end
+
+
+data2 = @acset_colim yWithLabel begin
+  (x1, x2)::X
+  hasLabel(x1) == "A"
+  hasLabel(x2) == "C"
+end
+
+out1 = migrate(SplitWithDefault, data1, M1)
+out2 = migrate(SplitWithDefault, data2, M1)
+
+@test nparts(out1,:Thing) == nparts(out1,:A) == 1 && nparts(out1,:B) == 0
+@test nparts(out2,:Thing) == 2 && nparts(out2,:A) == 1 && nparts(out2,:B) == 0
 
 end#module
