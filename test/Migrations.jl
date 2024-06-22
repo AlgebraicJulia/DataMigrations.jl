@@ -454,8 +454,8 @@ WGF = WeightedGraph{Float64}
 yV, yE = WGF(1), @acset(WGF, begin 
   V=2;E=1;Weight=1;src=2;tgt=1; weight=[AttrVar(1)]
 end)
-@test representable(WGF, SchWeightedGraph, :V) == yV
-@test is_isomorphic(representable(WGF, SchWeightedGraph, :E), yE)
+@test representable(WGF, :V) == yV
+@test is_isomorphic(representable(WGF, :E), yE)
 
 yWG = yoneda(WGF)
 
