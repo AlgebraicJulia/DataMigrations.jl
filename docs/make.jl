@@ -42,7 +42,7 @@ makedocs(
   pages=Any[
     "DataMigrations.jl"=>"index.md",
     "Examples"=>Any[
-      "generated/literate_example.md",
+      "generated/migrations_intro.md",
     ],
     "Library Reference"=>"api.md",
   ]
