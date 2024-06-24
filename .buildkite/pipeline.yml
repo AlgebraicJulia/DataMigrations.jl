@@ -13,7 +13,7 @@ steps:
          
   - wait 
 
-  - labels: ":scroll: Build docs and run tests"
+  - label: ":scroll: Build docs and run tests"
     env:
       JULIA_DEPOT_PATH: "$GATAS_HOME/$BUILDKITE_AGENT_NAME"
       JULIA_PROJECT: "docs/"
