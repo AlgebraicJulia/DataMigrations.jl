@@ -1,5 +1,7 @@
 using DataMigrations, Catlab
 using StatsBase # for sampling data
+import Catlab: to_graphviz_property_graph
+import Catlab.Graphics.GraphvizGraphs: default_graph_attrs, default_node_attrs, default_edge_attrs
 import Catlab.Graphics.Graphviz
 
 @present SchLogistics(FreeSchema) begin
@@ -136,10 +138,19 @@ end
 Constructor for `PropertyGraph` from an `AbstractLogistics` object
 for Graphviz visualization.
 """
-function PropertyGraph{T}(
-    g::AbstractLogistics; gprops...
-) where T
-    pg = PropertyGraph{T}(; gprops...)
+function to_graphviz_property_graph(
+    g::AbstractLogistics;
+    prog::AbstractString="dot", 
+    graph_attrs::AbstractDict=Dict(),
+    node_attrs::AbstractDict=Dict(), 
+    edge_attrs::AbstractDict=Dict()
+)
+    pg = PropertyGraph{Any}(;
+        prog = prog,
+        graph = merge!(default_graph_attrs(prog), graph_attrs),
+        node = merge!(Dict(), node_attrs),
+        edge = merge!(default_edge_attrs(prog), edge_attrs),
+    )
     v_depot = add_vertices!(pg, nparts(g, :Depot))
     v_site = add_vertices!(pg, nparts(g, :Site))
     for v in v_depot
@@ -158,4 +169,8 @@ function PropertyGraph{T}(
     return pg
 end
 
-to_graphviz(PropertyGraph{Any}(logistics; prog = "dot", rankdir = "LR"))
+to_graphviz(to_graphviz_property_graph(logistics; prog = "dot", graph_attrs = Dict(:rankdir=>"LR")))
+
+# --------------------------------------------------------------------------------
+# a simple migration
+
