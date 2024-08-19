@@ -175,3 +175,54 @@ to_graphviz(to_graphviz_property_graph(logistics; prog = "dot", graph_attrs = Di
 # a simple migration
 
 sites_subset = sample(parts(logistics, :Site), 5, replace=false)
+sites_subset_nm = logistics[sites_subset, :site_name]
+
+M = @migration SchLogistics SchLogistics begin
+    # Obs
+    Site => @join begin
+        s::Site
+        n::NameType
+        (f:s → n)::(x -> site_name(x) ∈ sites_subset_nm ? "yes" : "no")
+        (g:s → n)::(x -> "yes")
+    end
+    Depot => @cases begin
+        direct => @join begin
+            d::Depot
+            l::LaneD2S
+            s::Site
+            src_d2s(l) == d
+            tgt_d2s(l) == s
+
+        end
+        indirect => @join begin
+            (d₁, d₂)::Depot
+            l₁::LaneD2D
+            l₂::LaneD2S
+            s::Site
+            src_d2d(l₁) == d₁
+            tgt_d2d(l₁) == d₂
+            src_d2s(l₂) == d₂
+            tgt_d2s(l₂) == s
+            n::NameType
+            (f:s → n)::(x -> site_name(x) ∈ sites_subset_nm ? "yes" : "no")
+            (g:s → n)::(x -> "yes")
+        end
+    end
+    LaneD2D => LaneD2D
+    LaneD2S => LaneD2S
+
+    # Homs
+
+    # Attrs
+    DepotType => DepotType
+    TimeType => TimeType
+    NameType => NameType
+
+    # attrs
+    site_name => site_name(s)
+
+    # time_d2d =>
+    # time_d2s =>
+    # depot_name => 
+    # depot_type =>
+end
