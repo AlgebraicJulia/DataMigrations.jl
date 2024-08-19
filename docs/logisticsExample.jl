@@ -66,7 +66,7 @@ end
 # add Sites
 # only accessible from secondaries
 for i in 1:8
-    src_d2s = sample(incident(logistics, :Secondary, :depot_type), sample(1:3))
+    src_d2s = sample(incident(logistics, :Secondary, :depot_type), sample(1:3), replace=false)
     s = add_part!(
         logistics,
         :Site,
@@ -100,7 +100,7 @@ end
 
 # only accessible from primaries
 for i in 13:15
-    src_d2s = sample(incident(logistics, :Primary, :depot_type), sample(1:3))
+    src_d2s = sample(incident(logistics, :Primary, :depot_type), sample(1:3), replace=false)
     s = add_part!(
         logistics,
         :Site,
@@ -174,3 +174,4 @@ to_graphviz(to_graphviz_property_graph(logistics; prog = "dot", graph_attrs = Di
 # --------------------------------------------------------------------------------
 # a simple migration
 
+sites_subset = sample(parts(logistics, :Site), 5, replace=false)
