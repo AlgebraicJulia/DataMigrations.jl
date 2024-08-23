@@ -1,5 +1,5 @@
 # Library Reference
 
 ```@autodocs
-Modules = [DataMigrations]
+Modules = [DataMigrations, DataMigrations.Migrations, DataMigrations.DiagrammaticPrograms]
 ```
