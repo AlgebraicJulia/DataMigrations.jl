@@ -177,6 +177,8 @@ to_graphviz(to_graphviz_property_graph(logistics; prog = "dot", graph_attrs = Di
 
 # --------------------------------------------------------------------------------
 # a simple migration
+# this is the simplest conjunctive migration that did something interesting
+# it computes an equalizer to filter the sites
 
 sites_subset = sample(parts(logistics, :Site), 5, replace=false)
 sites_subset_nm = logistics[sites_subset, :site_name]
@@ -206,4 +208,26 @@ d = migrate(Sites, logistics, M)
 
 
 # --------------------------------------------------------------------------------
-# 
+# explain what these are
+
+M = @migration SchSites SchLogistics begin
+    Site => @unit
+    NameType => @unit
+end
+
+d = migrate(Sites, logistics, M)
+
+M = @migration SchSites SchLogistics begin
+    Site => @empty
+    NameType => @unit
+end
+
+d = migrate(Sites, logistics, M)
+
+M = @migration SchSites SchLogistics begin
+    Site => @product begin end
+    NameType => @unit
+    site_name => begin end
+end
+
+d = migrate(Sites, logistics, M)
