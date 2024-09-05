@@ -208,6 +208,86 @@ d = migrate(Sites, logistics, M)
 
 
 # --------------------------------------------------------------------------------
+# if we just look at the depots, it's the same as the schema for Graph
+
+@present SchDepots(FreeSchema) begin
+    (Depot,LaneD2D)::Ob
+    src_d2d::Hom(LaneD2D,Depot)
+    tgt_d2d::Hom(LaneD2D,Depot)
+    NameType::AttrType
+    DepotType::AttrType
+    TimeType::AttrType
+    depot_name::Attr(Depot,NameType)
+    depot_type::Attr(Depot,DepotType)
+    time_d2d::Attr(LaneD2D,TimeType)
+end
+
+@acset_type Depots(SchDepots)
+
+depots_subset = sample(incident(logistics, :Primary, :depot_type), 2, replace=false)
+depots_subset_nm = logistics[depots_subset, :depot_name]
+
+# what if we have edges possibly going in both directions?
+# M = @migration SchDepots SchLogistics begin
+#     Depot => @join begin
+#         d::Depot
+#         n::NameType
+#         (f:d → n)::(x -> depot_name(x) ∈ depots_subset_nm ? "yes" : "no")
+#         (g:d → n)::(x -> "yes")
+#     end
+#     LaneD2D => @join begin
+#         (d₁,d₂)::Depot
+#         (n₁,n₂)::NameType
+#         (f₁:d₁ → n₁)::(x -> depot_name(x) ∈ depots_subset_nm ? "yes" : "no")
+#         (g₁:d₁ → n₁)::(x -> "yes")
+#         (f₂:d₂ → n₂)::(x -> depot_name(x) ∈ depots_subset_nm ? "yes" : "no")
+#         (g₂:d₂ → n₂)::(x -> "yes")
+#         e::LaneD2D
+#         src_d2d(e) == d₁
+#         tgt_d2d(e) == d₂
+#     end
+#     src_d2d => (d => d₁; n => n₁; f => f₁; g => g₁)
+#     tgt_d2d => (d => d₂; n => n₂; f => f₂; g => g₂)
+#     NameType => NameType
+#     DepotType => DepotType
+#     TimeType => TimeType
+#     depot_name => depot_name(d)
+#     depot_type => depot_type(d)
+#     time_d2d => time_d2d(e)
+# end
+
+M = @migration SchDepots SchLogistics begin
+    Depot => @join begin
+        d::Depot
+        n::NameType
+        (f:d → n)::(x -> depot_name(x) ∈ depots_subset_nm ? "yes" : "no")
+        (g:d → n)::(x -> "yes")
+    end
+    LaneD2D => @join begin
+        (d₁,d₂)::Depot
+        n₁::NameType
+        (f₁:d₁ → n₁)::(x -> depot_name(x) ∈ depots_subset_nm ? "yes" : "no")
+        (g₁:d₁ → n₁)::(x -> "yes")
+        e::LaneD2D
+        src_d2d(e) == d₁
+        tgt_d2d(e) == d₂
+    end
+    src_d2d => begin
+        d => d₁; n => n₁; f => f₁; g => g₁
+    end
+    tgt_d2d => begin end
+    NameType => NameType
+    DepotType => DepotType
+    TimeType => TimeType
+    depot_name => depot_name(d)
+    depot_type => depot_type(d)
+    time_d2d => time_d2d(e)
+end
+
+d = migrate(Depots, logistics, M)
+
+
+# --------------------------------------------------------------------------------
 # explain what these are
 
 M = @migration SchSites SchLogistics begin
