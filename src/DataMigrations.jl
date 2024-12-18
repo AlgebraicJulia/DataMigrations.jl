@@ -13,9 +13,11 @@ module DataMigrations
 
 using Reexport
 export func
+
 include("Migrations.jl")
 include("DiagrammaticPrograms.jl")
 
 @reexport using .Migrations
 @reexport using .DiagrammaticPrograms
+
 end

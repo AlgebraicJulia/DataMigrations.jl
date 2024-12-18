@@ -1,4 +1,6 @@
-# DataMigrations.jl includes facilities for categorical data migrations.
+# # Introduction to Data Migrations
+
+# DataMigrations.jl includes facilities for categorical data migrations. 
 # We'll start by example, working with some graph schemas from Catlab.
 
 using Catlab, DataMigrations

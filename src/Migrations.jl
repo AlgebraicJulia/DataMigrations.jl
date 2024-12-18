@@ -94,7 +94,7 @@ consisting of `shape_map`, `diagram_map`, and `precomposed_diagram`
 is whiskered with `X` (except where it's undefined), 
 and then the functions in `params` are used to fill in the gaps.
 
-See also [`QueryDiagram`](@ref), [`param_compose`](@ref)
+See also [`QueryDiagram`](@ref)
 """
 struct QueryDiagramHom{T,C<:Cat,F<:FinFunctor,Φ<:FinTransformation,D<:Functor{<:FinCat,C},Params<:AbstractDict}<:DiagramHom{T,C}
   shape_map::F
@@ -143,28 +143,6 @@ DiagramHom{T}(f::QueryDiagramHom) where T =
   QueryDiagramHom{T}(f.shape_map, f.diagram_map, f.precomposed_diagram,get_params(f))
 
 
-#Note there's currently no composition of QueryDiagramHoms.
-
-#This and some others can probably be dispatched to just querydiagramhoms?
-"""
-    compose(f::DiagramHom,F::Functor,params[;kw...])
-
-Whisker a partially-defined `DiagramHom` with a 
-`Functor`, using the dictionary `params` to fill in any gaps. 
-
-While [`QueryDiagramHom`](@ref)s have internal `params` for a similar
-purpose, it is sometimes necessary to borrow `params` from
-a [`QueryDiagram`](@ref) or [`DataMigration`](@ref) containing `f`, which
-is the functionality enabled here.
-
-See also: `param_compose`
-"""
-function compose(f::DiagramHom{T}, F::Functor, params;kw...) where T
-  whiskered = param_compose(diagram_map(f),F,params)
-  DiagramHom{T}(shape_map(f), whiskered,
-                compose(f.precomposed_diagram, F; kw...))
-end
-
 """
     param_compose(α,H,params)
 
@@ -193,6 +171,27 @@ function param_compose(α::FinTransformation, H::Functor,params)
   end
   FinTransformation(new_components,compose(F, H), compose(G, H))
 end
+
+#Note there's currently no composition of QueryDiagramHoms.
+
+#This and some others can probably be dispatched to just querydiagramhoms?
+"""
+    compose(f::DiagramHom,F::Functor,params[;kw...])
+
+Whisker a partially-defined `DiagramHom` with a 
+`Functor`, using the dictionary `params` to fill in any gaps. 
+
+While [`QueryDiagramHom`](@ref)s have internal `params` for a similar
+purpose, it is sometimes necessary to borrow `params` from
+a [`QueryDiagram`](@ref) containing `f`, which
+is the functionality enabled here.
+"""
+function compose(f::DiagramHom{T}, F::Functor, params;kw...) where T
+  whiskered = param_compose(diagram_map(f),F,params)
+  DiagramHom{T}(shape_map(f), whiskered,
+                compose(f.precomposed_diagram, F; kw...))
+end
+
 
 """
     compose(d::QueryDiagram,F::Functor[;kw...])
