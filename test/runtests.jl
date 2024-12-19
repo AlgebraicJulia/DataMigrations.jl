@@ -1,6 +1,6 @@
 using Test
 @testset "Diagrammatic Programs" begin
-  include("DiagrammaticPrograms.jl")
+  include("diagrammatic-programs/DiagrammaticPrograms.jl")
 end
 @testset "Migrations" begin
   include("Migrations.jl")
