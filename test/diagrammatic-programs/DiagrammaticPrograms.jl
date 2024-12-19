@@ -8,7 +8,6 @@ using Catlab.WiringDiagrams.CPortGraphs
 using DataMigrations
 using DataMigrations.DiagrammaticPrograms: get_keyword_arg_val, destructure_unary_call
 
-
 @present SchSet(FreeSchema) begin
   X::Ob
 end

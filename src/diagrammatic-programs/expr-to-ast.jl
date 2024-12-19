@@ -155,7 +155,8 @@ end
 """
 function parse_ob_ast(expr;kw...)::AST.ObExpr
   @match expr begin
-    Expr(:macrocall, _...) => parse_ob_macro_ast(expr;kw...) #XX: This should probably handle @julia_code
+    Expr(:macrocall, _...) => parse_ob_macro_ast(expr;kw...) 
+    #XXX: This should probably handle @julia_code
     x::Symbol || Expr(:curly, _...) => AST.ObGenerator(expr)
     _ => error("Invalid object expression $expr")
   end
@@ -212,35 +213,39 @@ end
  should be ObExprs or HomExprs; we choose the former somewhat arbitrarily.
 """
 function parse_hom_ast(expr, dom::AST.LimitExpr, cod::AST.LimitExpr;mod::Module=Main)
-  parse_mapping_ast((args...) -> parse_apply_ast(args..., dom,mod=mod), expr, cod,mod=mod)
+    parse_mapping_ast((args...) -> parse_apply_ast(args..., dom,mod=mod), expr, cod,mod=mod)
 end
+
 function parse_hom_ast(expr, dom::AST.ObGenerator, cod::AST.LimitExpr;mod::Module=Main)
-  parse_mapping_ast(expr, cod,mod=mod) do (args...)
-    AST.Apply(AST.OnlyOb(), parse_hom_ast(args..., dom;mod=mod))
-  end
+    parse_mapping_ast(expr, cod,mod=mod) do (args...)
+        AST.Apply(AST.OnlyOb(), parse_hom_ast(args..., dom;mod=mod))
+    end
 end
+
 function parse_hom_ast(expr, dom::AST.LimitExpr, cod::AST.ObGenerator;mod::Module=Main)
-  f(ex) = [AST.ObAssign(AST.OnlyOb(),ex)] |> AST.Mapping
-  @match expr begin
-    Expr(:(->),inputs,body) => f(AST.JuliaCodeOb(expr,mod))
-    Expr(:block,args...) => f(AST.JuliaCodeOb(expr,mod))
-    _ => f(parse_apply_ast(expr, cod, dom,mod=mod))
-  end
+    f(ex) = [AST.ObAssign(AST.OnlyOb(),ex)] |> AST.Mapping
+    @match expr begin
+        Expr(:(->),inputs,body) => f(AST.JuliaCodeOb(expr,mod))
+        Expr(:block,args...) => f(AST.JuliaCodeOb(expr,mod))
+        _ => f(parse_apply_ast(expr, cod, dom,mod=mod))
+    end
 end
 
 # Colimit fragment.
 function parse_hom_ast(expr, dom::AST.ColimitExpr, cod::AST.ColimitExpr;mod::Module=Main)
-  parse_mapping_ast((args...) -> parse_coapply_ast(args..., cod,mod=mod), expr, dom,mod=mod)
+    parse_mapping_ast((args...) -> parse_coapply_ast(args..., cod,mod=mod), expr, dom,mod=mod)
 end
+
 function parse_hom_ast(expr, dom::Union{AST.ObGenerator,AST.LimitExpr},
                        cod::AST.ColimitExpr;mod::Module=Main)
-  [AST.ObAssign(AST.OnlyOb(), parse_coapply_ast(expr, dom, cod,mod=mod))] |> AST.Mapping
+    [AST.ObAssign(AST.OnlyOb(), parse_coapply_ast(expr, dom, cod,mod=mod))] |> AST.Mapping
 end
+
 function parse_hom_ast(expr, dom::AST.ColimitExpr,
                        cod::Union{AST.ObGenerator,AST.LimitExpr};mod::Module=Main)
-  parse_mapping_ast(expr, dom,mod=mod) do (args...)
-    AST.Coapply(parse_hom_ast(args..., cod;mod=mod), AST.OnlyOb())
-  end
+    parse_mapping_ast(expr, dom,mod=mod) do (args...)
+        AST.Coapply(parse_hom_ast(args..., cod;mod=mod), AST.OnlyOb())
+    end
 end
 
 

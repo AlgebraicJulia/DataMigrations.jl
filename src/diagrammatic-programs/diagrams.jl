@@ -12,9 +12,8 @@ struct DiagramData{T,ObMap,HomMap}
   params::AbstractDict
 end
 
-function DiagramData{T}(ob_map::ObMap,
-						hom_map::HomMap,
-                        shape, params=Dict()) where {T,ObMap,HomMap}
+# TODO what does this constructor do?
+function DiagramData{T}(ob_map::ObMap, hom_map::HomMap, shape::FinCat, params=Dict()) where {T,ObMap,HomMap}
   DiagramData{T,ObMap,HomMap}(ob_map, hom_map, shape, params)
 end
 
@@ -51,7 +50,7 @@ function change_theory(syntax::Module,pres::Presentation{S,Name}) where {S,Name}
 	end
 	construct_generators!(pres_new,map(nameof,generators(pres)),map(gat_typeof,generators(pres)),
                         map(x->map(nameof,x.type_args),generators(pres)))
-	#XXX: test on equations
+	#TODO: test on equations
 	pres_new
 end
 
@@ -140,8 +139,24 @@ function parse_diagram(C::FinCat, ast::AST.Diagram)
 		error("Parsed diagram is not functorial: $ast")
 	return d
 end
-parse_diagram(pres::Presentation, ast::AST.Diagram) =
-  parse_diagram(FinCat(pres), ast)
+
+parse_diagram(pres::Presentation, ast::AST.Diagram) = parse_diagram(FinCat(pres), ast)
+
+function parse_helper!(x, X, g, ::Type{ObOver})
+	x′ = parse!(g, AST.Ob(x))
+	F_ob[x′] = isnothing(X) ? nothing : ob_parser(X)
+end
+
+function parse_helper!(f, x, y, h, ::Type{HomOver})
+	e = parse!(g, AST.Hom(f, x, y))
+    X, Y = F_ob[dom(e)], F_ob[codom(e)]
+    F_hom[e] = hom_parser(h, X, Y)
+    # hom_parser might be e.g. parse_query_hom(C,...)
+    if isnothing(Y)
+		# Infer codomain in base category from parsed hom.
+        F_ob[codom(e)] = codom(C, F_hom[e])
+    end
+end
 
 """
 Take HomOvers and ObOvers, build a target schema
@@ -157,21 +172,9 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
   mornames = Symbol[nameof(x) for x in hom_generators(C)]
   for stmt in statements
     @match stmt begin
-      AST.ObOver(x, X) => begin
-        x′ = parse!(g, AST.Ob(x))
-        #`nothing`, though zeroob would be nicer, so that not every category and schema has to be pointed
-        F_ob[x′] = isnothing(X) ? nothing : ob_parser(X)
-      end
-      AST.HomOver(f, x, y, h) => begin
-        e = parse!(g, AST.Hom(f, x, y))
-        X, Y = F_ob[dom(e)], F_ob[codom(e)]
-        F_hom[e] = hom_parser(h, X, Y)
-        #hom_parser might be e.g. parse_query_hom(C,...)
-        if isnothing(Y)
-          # Infer codomain in base category from parsed hom.
-          F_ob[codom(e)] = codom(C, F_hom[e])
-        end
-      end
+	  AST.ObOver(x, X) => parse_helper!(x, X, g, ObOver)
+	  AST.HomOver(f, x, y, h) => parse_helper!(f, x, X, g, HomOver)
+	  # XXX finish
       #add the hom that's going to map to h, then save for later
       AST.AttrOver(f,x,y,expr,mod) => begin
         e = parse!(g,AST.Hom(f,x,y))
@@ -199,9 +202,8 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
       _ => error("Cannot use statement $stmt in diagram definition")
     end
   end
-  J = FinCat(g) #oh no!
-  DiagramData{type}(F_ob, 
-                    F_hom, J, params)
+  J = FinCat(g) # TODO oh no!
+  DiagramData{type}(F_ob, F_hom, J, params)
 end
 
 parse_diagram_data(C::FinCat, ast::AST.Diagram; kw...) =

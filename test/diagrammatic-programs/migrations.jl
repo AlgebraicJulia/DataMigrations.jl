@@ -24,8 +24,8 @@ M = @migration SchGraph begin
   (tgt: E → V) => src
 end
 J = FinCat(@present P(FreeSchema) begin
-           (V,E)::Ob
-           (src,tgt)::Hom(E,V)
+    (V,E)::Ob
+    (src,tgt)::Hom(E,V)
 end)
 
 @test functor(M) == FinDomFunctor(Dict(:E=>:E,:V=>:V), Dict(:tgt=>:src,:src=>:tgt), J, FinCat(SchGraph))

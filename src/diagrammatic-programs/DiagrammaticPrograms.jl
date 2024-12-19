@@ -27,7 +27,7 @@ include("graphs.jl")
 include("functors.jl")
 include("diagrams.jl")
 include("migrations.jl")
-include("query-parsing.jl")
+include("queries/Queries.jl") # XXX not a module yet
 include("expr-to-ast.jl")
 
 @reexport using .AST
@@ -56,10 +56,12 @@ function reparse_arrows(expr)
     _ => expr
   end
 end
+
 function make_func(mod::Module,body::Expr,vars::Vector{Symbol})
   expr = Expr(:(->),Expr(:tuple,vars...),body)
   mod.eval(expr)
 end
+
 """ Left-most argument plus remainder of left-associated binary operations.
 `ops` denotes the operations that won't need to be reversed for the desired
 parser output (AST.Apply or AST.Coapply).
@@ -81,8 +83,7 @@ function leftmost_arg(expr, ops; all_ops=nothing)
   leftmost(expr)
 end
 
-""" Destructure Julia expression `:(f(g(x)))` to `(:(f∘g), :x)`, for example.
-"""
+""" Destructure Julia expression `:(f(g(x)))` to `(:(f∘g), :x)`, for example. """
 function destructure_unary_call(expr::Expr)
   @match expr begin
     Expr(:call, head, x::Symbol) => (head, x)
