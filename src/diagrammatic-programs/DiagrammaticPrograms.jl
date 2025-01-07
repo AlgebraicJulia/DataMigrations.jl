@@ -11,6 +11,7 @@ export @graph, @fincat, @finfunctor, @diagram, @free_diagram,
 
 using Base.Iterators: repeated
 using MLStyle: @match
+using Reexport
 
 using Catlab
 using Catlab.Theories: munit, FreeSchema, FreePointedSetSchema, ThPointedSetSchema, FreeCategory, FreePointedSetCategory, zeromap, Ob, Hom, dom, codom, HomExpr
@@ -23,6 +24,8 @@ import GATlab.Models.Presentations:construct_generator!,construct_generators!
 const DiagramGraph = NamedGraph{Symbol,Symbol}
 
 include("ast.jl")
+@reexport using .AST
+
 include("graphs.jl")
 include("functors.jl")
 include("diagrams.jl")
@@ -30,7 +33,6 @@ include("migrations.jl")
 include("queries/Queries.jl") # XXX not a module yet
 include("expr-to-ast.jl")
 
-@reexport using .AST
 
 # Julia expression utilities
 ############################
@@ -105,4 +107,5 @@ function get_keyword_arg_val(expr::Expr)
                "Acceptable inputs are of the form `:(var=val)`.")
   end
 end
+
 end

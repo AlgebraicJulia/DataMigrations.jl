@@ -102,7 +102,7 @@ Recall that a *free diagram* in a category ``C`` is a functor ``F: J → C`` whe
 ``J`` is a free category on a graph, here assumed finite. This macro is
 functionally a special case of [`@diagram`](@ref) but changes the interpretation
 of equality expressions. Rather than interpreting them as equations between
-morphisms in ``J``, equality expresions can be used to introduce anonymous
+morphisms in ``J``, equality expressions can be used to introduce anonymous
 morphisms in a "pointful" style. For example, the limit of the following diagram
 consists of the paths of length two in a graph:
 
@@ -142,22 +142,6 @@ end
 
 parse_diagram(pres::Presentation, ast::AST.Diagram) = parse_diagram(FinCat(pres), ast)
 
-function parse_helper!(x, X, g, ::Type{ObOver})
-	x′ = parse!(g, AST.Ob(x))
-	F_ob[x′] = isnothing(X) ? nothing : ob_parser(X)
-end
-
-function parse_helper!(f, x, y, h, ::Type{HomOver})
-	e = parse!(g, AST.Hom(f, x, y))
-    X, Y = F_ob[dom(e)], F_ob[codom(e)]
-    F_hom[e] = hom_parser(h, X, Y)
-    # hom_parser might be e.g. parse_query_hom(C,...)
-    if isnothing(Y)
-		# Infer codomain in base category from parsed hom.
-        F_ob[codom(e)] = codom(C, F_hom[e])
-    end
-end
-
 """
 Take HomOvers and ObOvers, build a target schema
 for the migration and its ob and hom maps,
@@ -165,6 +149,7 @@ ready for promotion and building the diagram.
 """
 function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
                             type=Any, ob_parser=nothing, hom_parser=nothing)
+  
   isnothing(ob_parser) && (ob_parser = x -> parse_ob(C, x))
   isnothing(hom_parser) && (hom_parser = (f,x,y) -> parse_hom(C,f))
   g, eqs = Presentation(FreeSchema), Pair[] 
@@ -172,8 +157,24 @@ function parse_diagram_data(C::FinCat, statements::Vector{<:AST.DiagramExpr};
   mornames = Symbol[nameof(x) for x in hom_generators(C)]
   for stmt in statements
     @match stmt begin
-	  AST.ObOver(x, X) => parse_helper!(x, X, g, ObOver)
-	  AST.HomOver(f, x, y, h) => parse_helper!(f, x, X, g, HomOver)
+        AST.ObOver(x, X) => begin
+        x′ = parse!(g, AST.Ob(x))
+        #`nothing`, though zeroob would be nicer, so that not every category and schema has to be pointed
+        F_ob[x′] = isnothing(X) ? nothing : ob_parser(X)
+      end
+      AST.HomOver(f, x, y, h) => begin
+        e = parse!(g, AST.Hom(f, x, y))
+        X, Y = F_ob[dom(e)], F_ob[codom(e)]
+        F_hom[e] = hom_parser(h, X, Y)
+        #hom_parser might be e.g. parse_query_hom(C,...)
+        if isnothing(Y)
+          # Infer codomain in base category from parsed hom.
+          F_ob[codom(e)] = codom(C, F_hom[e])
+        end
+      end
+
+	  # AST.ObOver(x, X) => parse_helper!(x, X, g, ob_parser, F_ob, ObOver)
+	  # AST.HomOver(f, x, y, h) => parse_helper!(f, x, y, g, hom_parser, F_ob, F_hom, HomOver)
 	  # XXX finish
       #add the hom that's going to map to h, then save for later
       AST.AttrOver(f,x,y,expr,mod) => begin

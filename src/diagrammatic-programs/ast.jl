@@ -7,6 +7,8 @@ abstract type ObExpr end
 abstract type HomExpr end
 abstract type AssignExpr end
 
+export ObExpr, HomExpr, AssignExpr
+
 @data ObExpr begin
   ObGenerator(name)
   OnlyOb()
@@ -28,10 +30,11 @@ end
 @data DiagramExpr begin
   ObOver(name::Symbol, over::Union{ObExpr,Nothing}) 
   HomOver(name::Symbol, src::Symbol, tgt::Symbol, over::HomExpr)
-  AttrOver(name::Symbol, src::Symbol,tgt::Symbol,aux_func_def::Expr,mod::Module)#XX:make JuliaCode
+  AttrOver(name::Symbol, src::Symbol, tgt::Symbol, aux_func_def::Expr, mod::Module) # XXX: make JuliaCode
   HomAndAttrOver(lhs::HomOver,rhs::AttrOver)
   AssignValue(name::Symbol, value)
 end
+export DiagramExpr, ObOver, HomOver
 
 @data CatExpr <: DiagramExpr begin
   Ob(name::Symbol)
