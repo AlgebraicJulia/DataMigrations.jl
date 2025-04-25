@@ -29,7 +29,7 @@ end
 
 # Thus the first line `V => V` is easy: we want the vertices of `H`
 # to be the same as the vertices of `G`. For the second line,
-# `E => @cases begin e::E; v::V end``
+# `E => @cases begin e::E; v::V end`,
 # things begin to get interesting. What this is saying is that we 
 # want an *edge* in `H` to be *either* an edge in `G` *or* a vertex
 # in `G`. Thus both `E` and `V` refer to those sorts for `G`. 
@@ -119,7 +119,7 @@ end
 # the double colons.
 
 # What the `@join` decoration does is instruct the migration to send a `Schedule`
-# `A`` to a `Conflicts` `B` whose `ConflictedPairs` are the set of all ways to 
+# `A` to a `Conflicts` `B` whose `ConflictedPairs` are the set of all ways to 
 # choose an element of `A`'s `Jobs` for `X` and for `Y`, an element of 
 # `A`'s `Workers` for `W`, and an element of `A`'s `Time` for `T`, in such a
 # way that moving along any of the four edges sends one of the selected choices to
