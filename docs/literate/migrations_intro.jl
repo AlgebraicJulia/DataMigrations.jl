@@ -112,7 +112,7 @@ N = @migration SchConflicts SchSchedule begin
   time => time(X)
 end
 
-# Most of this migration is easy enough, but the image of `ConflictedPairs``
+# Most of this migration is easy enough, but the image of `ConflictedPairs`
 # is quite complicated. We've specified a *diagram* in `SchSchedule`,
 # given by mapping the graph with vertices `X,Y,W,T` and edges 
 # `a,b,t,s` into that schema according to the mapping given to the right of
