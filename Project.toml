@@ -15,8 +15,8 @@ Reexport = "189a3867-3050-52da-a836-e630ba90ab69"
 
 [compat]
 ACSets = "0.2.20"
-GATlab = "0.0.7,0.1"
-Catlab = "0.16.12"
+GATlab = "0.0.7, 0.1, 0.2"
+Catlab = "0.16.12, 0.17"
 Literate = "2"
 MLStyle = "0.4"
 Reexport = "1"

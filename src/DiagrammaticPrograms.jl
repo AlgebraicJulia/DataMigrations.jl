@@ -14,13 +14,21 @@ using MLStyle: @match
 
 using Catlab
 using Catlab.Theories: munit, FreeSchema, FreePointedSetSchema, ThPointedSetSchema, FreeCategory, FreePointedSetCategory, zeromap, Ob, Hom, dom, codom, HomExpr
-using Catlab.CategoricalAlgebra.FinCats: FinCat, mapvals, make_map, FinCatPresentation
+import Catlab.CategoricalAlgebra.Cats.FinCats: FinCat, FinCatPresentation
+using Catlab.CategoricalAlgebra.Cats.FinFunctors: mapvals, make_map
 using ..Migrations
-using ..Migrations: ConjQuery, GlueQuery, GlucQuery
+using ..Migrations: ConjQuery, GlueQuery, GlucQuery, QueryDiagram, QueryDiagramHom,
+  make_diagram, make_diagram_unit, make_diagram_hom_unit
 using GATlab
 import GATlab: Presentation
 import GATlab.Models.Presentations:construct_generator!,construct_generators!
 const DiagramGraph = NamedGraph{Symbol,Symbol}
+typed_typecat(ObT, HomT) =
+  Category(TypeCat{ObT,HomT}(Dispatch(Catlab.CategoricalAlgebra.Cats.Categories.ThCategory, [ObT, HomT])))
+ob_generator_name(C, x) = nameof(x)
+hom_generator_name(C, f) = nameof(f)
+ob_generator(C, x::Symbol) = only(filter(y -> nameof(y) == x, collect(ob_generators(C))))
+hom_generator(C, f::Symbol) = only(filter(g -> nameof(g) == f, collect(hom_generators(C))))
 
 # Abstract syntax
 #################
@@ -248,7 +256,7 @@ function parse_functor(C::FinCat, D::FinCat, ast::AST.Mapping;
                        check_equations::Bool=false)
   ob_map, hom_map = make_ob_hom_maps(C, ast)
   F = FinFunctor(mapvals(x -> parse_ob(D, x), ob_map),
-                 mapvals(f -> parse_hom(D, f), hom_map), C, D)
+                 mapvals(f -> parse_hom(D, f), hom_map), C, D; homtype=:hom)
   failures = functoriality_failures(F, check_equations=check_equations)
   if !all(isempty,failures)
     doms, cods = failures[1], failures[2]
@@ -295,7 +303,7 @@ end
 
 """ Parse expression for object in a category.
 """
-function parse_ob(C::FinCat{Ob,Hom}, expr::AST.ObExpr) where {Ob,Hom}
+function parse_ob(C::FinCat, expr::AST.ObExpr)
   @match expr begin
     AST.ObGenerator(name) => @match name begin
       x::Symbol => ob_generator(C, x)
@@ -308,11 +316,11 @@ end
 
 """ Parse expression for morphism in a category.
 """
-function parse_hom(C::FinCat{Ob,Hom}, expr::AST.HomExpr) where {Ob,Hom}
+function parse_hom(C::FinCat, expr::AST.HomExpr)
   @match expr begin
     AST.HomGenerator(name) => @match name begin
       f::Symbol => hom_generator(C, f)
-      Expr(:curly, _...) => parse_gat_expr(C, name)::Hom
+      Expr(:curly, _...) => parse_gat_expr(C, name)
       _ => error("Invalid morphism generator $name")
     end
     AST.Compose(args) => mapreduce(
@@ -326,7 +334,7 @@ end
 """ Parse GAT expression based on curly braces, rather than parentheses.
 """
 function parse_gat_expr(C::FinCat, root_expr)
-  pres = presentation(C)
+  pres = presentation(C.val)
   function parse(expr)
     @match expr begin
       Expr(:curly, head::Symbol, args...) =>
@@ -372,8 +380,10 @@ function Diagrams.Diagram(d::DiagramData{T}, codom) where T
   #sure the shape is based on non-pointed stuff
   simple = isempty(d.params)
   new_shape = change_shape(simple,d.shape)
-  F = FinDomFunctor(d.ob_map, d.hom_map, new_shape, codom)
-  simple ? SimpleDiagram{T}(F) : QueryDiagram{T}(F, d.params)
+  F = codom isa FinCat ?
+    FinDomFunctor(d.ob_map, d.hom_map, new_shape, codom; homtype=:hom) :
+    FinDomFunctor(d.ob_map, d.hom_map, new_shape, codom)
+  simple ? make_diagram(T, F) : QueryDiagram{T}(F, d.params)
 end
 function change_shape(simple::Bool,old_shape::FinCatPresentation)
   old_pres = presentation(old_shape)
@@ -648,14 +658,10 @@ Uses the output of `yoneda`:
 end
 """
 macro acset_colim(yon, body)
-  body = quote
-    I => @join $body
-  end
-  ast = AST.Diagram(parse_diagram_ast(body, mod=__module__))
   quote
-    p = Presentation(acset_schema(last(first($(esc(yon)).ob_map))))
-    tmp = parse_migration(p, $ast)
-    ob_map(colimit_representables(tmp, $(esc(yon))), :I)
+    Catlab.CategoricalAlgebra.Pointwise.FunctorialDataMigrations.Yoneda.colimit_representables(
+      $(Catlab.CategoricalAlgebra.Pointwise.FunctorialDataMigrations.Yoneda.parse_diagram_data(body, __module__)),
+      $(esc(yon)))[2]
   end
 end
 
@@ -733,8 +739,8 @@ function parse_query(C::FinCat, expr::AST.ObExpr)
       parse_query_diagram(C, stmts, type=op)
     AST.Colimit(stmts) || AST.Coproduct(stmts) =>
       parse_query_diagram(C, stmts, type=id)
-    AST.Terminal() => DiagramData{op}([], [], FinCat(Presentation(presentation(C).syntax)))
-    AST.Initial() => DiagramData{id}([], [], FinCat(Presentation(presentation(C).syntax)))
+    AST.Terminal() => DiagramData{op}([], [], FinCat(Presentation(presentation(C.val).syntax)))
+    AST.Initial() => DiagramData{id}([], [], FinCat(Presentation(presentation(C.val).syntax)))
   end
 end
 
@@ -751,8 +757,7 @@ end
 Get the map in the source schema corresponding to a map
 of two singleton diagrams.
 """
-function parse_query_hom(C::FinCat{Ob}, expr::AST.HomExpr,
-                         ::Ob, ::Union{Ob,Nothing}) where Ob
+function parse_query_hom(C::FinCat, expr::AST.HomExpr, x, y)
   parse_hom(C, expr)
 end
 
@@ -761,9 +766,19 @@ end
 Create DiagramHomData for the case of a map between two
   conjunctive diagrams.
 """
-function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping,
-                         d::Union{Ob,DiagramData{op}}, d′::DiagramData{op}) where Ob
-  ob_rhs, hom_rhs = make_ob_hom_maps(shape(d′), ast, allow_missing=d isa Ob)
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d, d′::DiagramData{op})
+  ob_rhs, hom_rhs = make_ob_hom_maps(shape(d′), ast, allow_missing=!(d isa DiagramData))
+  f_ob = mapvals(ob_rhs, keys=true) do j′, rhs
+    parse_diagram_ob_rhs(C, rhs, ob_map(d′, j′), d)
+  end
+  f_hom = mapvals(rhs -> parse_hom(d, rhs), hom_rhs)
+  DiagramHomData{op}(f_ob, f_hom)
+end
+
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d::DiagramData{op}, d′::DiagramData{op})
+  ob_rhs, hom_rhs = make_ob_hom_maps(shape(d′), ast, allow_missing=false)
   f_ob = mapvals(ob_rhs, keys=true) do j′, rhs
     parse_diagram_ob_rhs(C, rhs, ob_map(d′, j′), d)
   end
@@ -774,8 +789,8 @@ end
 Create DiagramHomData for the case of a map from a single
   object to a conjunctive diagram.
 """
-function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping,
-                         d::DiagramData{op}, c′::Ob) where Ob
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d::DiagramData{op}, c′)
   assign = only(ast.assignments)
   DiagramHomData{op}(Dict(c′=> parse_diagram_ob_rhs(C, assign.rhs, c′, d)), Dict())
 end
@@ -783,8 +798,7 @@ end
 # Gluing fragment.
 #The reason for the possible argument variance mismatch seems to be that 
 #you might still need to promote later on.
-function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping, d::DiagramData{id},
-                         d′::Union{Ob,DiagramData{op},DiagramData{id}}) where Ob
+function parse_query_hom(C::FinCat, ast::AST.Mapping, d::DiagramData{id}, d′)
   ob_rhs, hom_rhs = make_ob_hom_maps(shape(d), ast,
                                      allow_missing=!(d′ isa DiagramData{id}))
   homnames = Symbol[nameof(x) for x in hom_generators(C)]
@@ -800,11 +814,52 @@ function parse_query_hom(C::FinCat{Ob}, ast::AST.Mapping, d::DiagramData{id},
   f_hom = mapvals(rhs -> parse_hom(d′, rhs), hom_rhs)
   DiagramHomData{id}(f_ob, f_hom,params)
 end
-function parse_query_hom(C::FinCat{Obj}, ast::AST.Mapping,
-                         c::Union{Obj,DiagramData{op}}, d′::DiagramData{id}) where Obj
+
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d::DiagramData{id}, d′::DiagramData{op})
+  ob_rhs, hom_rhs = make_ob_hom_maps(shape(d), ast, allow_missing=true)
+  homnames = Symbol[nameof(x) for x in hom_generators(C)]
+  params = Dict{Symbol,Any}()
+  f_ob = mapvals(ob_rhs, keys=true) do j, rhs
+    if rhs isa AST.MixedOb
+      aux_func = make_func(rhs.jcode.mod, rhs.jcode.code, homnames)
+      params[nameof(j)] = aux_func
+      rhs = rhs.oexp
+    end
+    parse_diagram_ob_rhs(C, rhs, ob_map(d, j), d′)
+  end
+  f_hom = mapvals(rhs -> parse_hom(d′, rhs), hom_rhs)
+  DiagramHomData{id}(f_ob, f_hom, params)
+end
+
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d::DiagramData{id}, d′::DiagramData{id})
+  ob_rhs, hom_rhs = make_ob_hom_maps(shape(d), ast, allow_missing=false)
+  homnames = Symbol[nameof(x) for x in hom_generators(C)]
+  params = Dict{Symbol,Any}()
+  f_ob = mapvals(ob_rhs, keys=true) do j, rhs
+    if rhs isa AST.MixedOb
+      aux_func = make_func(rhs.jcode.mod, rhs.jcode.code, homnames)
+      params[nameof(j)] = aux_func
+      rhs = rhs.oexp
+    end
+    parse_diagram_ob_rhs(C, rhs, ob_map(d, j), d′)
+  end
+  f_hom = mapvals(rhs -> parse_hom(d′, rhs), hom_rhs)
+  DiagramHomData{id}(f_ob, f_hom, params)
+end
+
+function parse_query_hom(C::FinCat, ast::AST.Mapping, c, d′::DiagramData{id})
   assign = only(ast.assignments)
-  cob = c isa Obj ? c : Ob(FreeCategory,:anon_ob)
+  cob = c isa DiagramData{op} ? Ob(FreeCategory,:anon_ob) : c
   DiagramHomData{id}(Dict(cob => parse_diagram_ob_rhs(C, assign.rhs, c, d′)), Dict())
+end
+
+function parse_query_hom(C::FinCat, ast::AST.Mapping,
+                         d::DiagramData{op}, d′::DiagramData{id})
+  assign = only(ast.assignments)
+  DiagramHomData{id}(Dict(Ob(FreeCategory, :anon_ob) =>
+    parse_diagram_ob_rhs(C, assign.rhs, d, d′)), Dict())
 end
 
 #expr will be an ObExpr
@@ -833,31 +888,91 @@ parse_hom(C, ::Missing) = missing
 # Query construction
 #-------------------
 
-function make_query(C::FinCat{Ob}, data::DiagramData{T}) where {T, Ob}
+function make_query(C::FinCat, data::DiagramData{T}) where T
   F_ob, F_hom, J = data.ob_map, data.hom_map, shape(data)
   F_hom = mapvals((h,f) -> isnothing(f) ? zeromap(F_ob[dom(J,h)],F_ob[codom(J,h)]) : f,F_hom;keys=true)
   F_ob = mapvals(x -> make_query(C, x), F_ob)
-  query_type = mapreduce(typeof, promote_query_type, values(F_ob), init=Ob)
+  query_type = isempty(F_ob) ? Union{} : mapreduce(typeof, promote_query_type, values(F_ob))
+  if query_type == Any && any(x -> x isa Diagram, values(F_ob))
+    query_type = Diagram
+  end
   @assert query_type != Any
-  F_ob = mapvals(x -> convert_query(C, query_type, x), F_ob)
+  lift_to_gluc = query_type <: DiagramId &&
+    any(needs_gluc_lift, values(F_ob))
+  F_ob = mapvals(F_ob) do x
+    if lift_to_gluc
+      convert_query_gluc(C, x)
+    else
+      convert_query(C, query_type, x)
+    end
+  end
   F_hom = mapvals(F_hom;keys=true) do h,f
     d,c = F_ob[dom(J,h)],F_ob[codom(J,h)]
     make_query_hom(C,f,d,c)
   end
-  if query_type <: Ob
+  if isempty(F_ob) || !(query_type <: Diagram)
     Diagram(DiagramData{T}(F_ob, F_hom, J, data.params), C)
   else
     # XXX: Why is the element type of `F_ob` sometimes too loose?
-    D = TypeCat(typeintersect(query_type, eltype(values(F_ob))),
-                eltype(values(F_hom)))
+    D = typed_typecat(typeintersect(query_type, eltype(values(F_ob))),
+                      eltype(values(F_hom)))
     Diagram(DiagramData{T}(F_ob, F_hom, J,data.params), D)
   end
 end
 
-make_query(C::FinCat{Ob}, x::Ob) where Ob = x
+make_query(C::FinCat, x) = x
 
-function make_query_hom(C::FinCat, f::DiagramHomData{op},
-                        d::Diagram{op}, d′::Diagram{op})
+needs_gluc_lift(::Any) = false
+needs_gluc_lift(d::DiagramOp) = true
+needs_gluc_lift(d::DiagramId) = !(codom(diagram(d)) isa FinCat)
+query_ob_component(D::Diagram, j) = let x = ob_map(D, j)
+  x isa DiagramOp ? Pair(j, DiagramHom(id[FinCatC()](dom(x)), id[Cat2()](diagram(x)), x)) :
+  x isa Diagram ? Pair(j, id(x)) : j
+end
+
+function convert_query_gluc(cat::FinCat, d::DiagramId)
+  codom(diagram(d)) isa FinCat || return d
+  J = shape(d)
+  F_ob = map(ob_generators(J)) do j
+    j => convert_query(cat, DiagramOp, ob_map(d, j))
+  end |> Dict
+  F_hom = map(hom_generators(J)) do h
+    s, t = F_ob[dom(J, h)], F_ob[codom(J, h)]
+    h => make_query_hom(cat, hom_map(diagram(d), h), s, t)
+  end |> Dict
+  Diagram(DiagramData{id}(F_ob, F_hom, J), typed_typecat(ConjQuery, Any))
+end
+convert_query_gluc(cat::FinCat, d::DiagramOp) = convert_query(cat, DiagramId, d)
+convert_query_gluc(cat::FinCat, x) =
+  convert_query(cat, DiagramId, convert_query(cat, DiagramOp, x))
+
+_cell1(pair::Union{Pair,Tuple{Any,Any}}) = first(pair)
+_cell1(x) = x
+_cell2(::Diagram, pair::Union{Pair,Tuple{Any,Any}}) = last(pair)
+_cell2(D::Diagram, x) = id(codom(D), ob_map(D, x))
+
+function _make_query_hom_op(ob_maps, hom_map, d::Diagram, d′::Diagram)
+  if d isa DiagramOp && d′ isa DiagramOp
+    return DiagramHom(ob_maps, hom_map, d, d′)
+  end
+  f = FinDomFunctor(mapvals(_cell1, ob_maps), hom_map, dom(d′), dom(d); homtype=:hom)
+  ϕ = Transformation(mapvals(x -> _cell2(d, x), ob_maps),
+                     compose[CatC()](f, diagram(d)), diagram(d′); check=false)
+  DiagramHom(f, ϕ, d)
+end
+
+function _make_query_hom_id(params, ob_maps, hom_map, d::Diagram, d′::Diagram)
+  if d isa DiagramId && d′ isa DiagramId
+    return QueryDiagramHom{id}(params, ob_maps, hom_map, d, d′)
+  end
+  f = FinFunctor(mapvals(_cell1, ob_maps), hom_map, dom(d), dom(d′); homtype=:hom)
+  ϕ = Transformation(mapvals(x -> _cell2(d′, x), ob_maps),
+                     diagram(d), compose[CatC()](f, diagram(d′)); check=false)
+  QueryDiagramHom{id}(DiagramHom(f, ϕ, d′), params)
+end
+
+function _make_query_hom_data(C::FinCat, f::DiagramHomData{op},
+                              d::Diagram, d′::Diagram)
   f_ob = mapvals(f.ob_map, keys=true) do j′, x
     x = @match x begin
       ::Missing => only_ob(shape(d))
@@ -866,15 +981,35 @@ function make_query_hom(C::FinCat, f::DiagramHomData{op},
     end
     @match x begin
       (j, g) => Pair(j, make_query_hom(C, g, ob_map(d, j), ob_map(d′, j′)))
-      j => j
+      j => query_ob_component(d, j)
     end
   end
   f_hom = mapvals(h -> ismissing(h) ? only_hom(shape(d)) : h, f.hom_map)
-  DiagramHom{op}(f_ob, f_hom, d, d′)
+  _make_query_hom_op(f_ob, f_hom, d, d′)
 end
 
-function make_query_hom(C::FinCat, f::DiagramHomData{id},
-                        d::Diagram{id}, d′::Diagram{id})
+function make_query_hom(C::FinCat, f::DiagramHomData{op},
+                        d::DiagramOp, d′::DiagramOp)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{op},
+                        d::QueryDiagram, d′::Diagram)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{op},
+                        d::Diagram, d′::QueryDiagram)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{op},
+                        d::QueryDiagram, d′::QueryDiagram)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function _make_query_hom_data(C::FinCat, f::DiagramHomData{id},
+                              d::Diagram, d′::Diagram)
   f_ob = mapvals(f.ob_map, keys=true) do j, x
     x = @match x begin
       ::Missing => only_ob(shape(d′))
@@ -887,47 +1022,74 @@ function make_query_hom(C::FinCat, f::DiagramHomData{id},
         g = isnothing(g) ? zeromap(s,t) : g
         Pair(j′, make_query_hom(C, g, s,t))
       end
-      j′ => j′
+      j′ => query_ob_component(d′, j′)
     end
   end
   f_hom = mapvals(h -> ismissing(h) ? only_hom(shape(d′)) : h, f.hom_map)
-  QueryDiagramHom{id}(f.params,f_ob, f_hom, d, d′)
+  _make_query_hom_id(f.params, f_ob, f_hom, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{id},
+                        d::DiagramId, d′::DiagramId)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{id},
+                        d::QueryDiagram, d′::Diagram)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{id},
+                        d::Diagram, d′::QueryDiagram)
+  _make_query_hom_data(C, f, d, d′)
+end
+
+function make_query_hom(C::FinCat, f::DiagramHomData{id},
+                        d::QueryDiagram, d′::QueryDiagram)
+  _make_query_hom_data(C, f, d, d′)
 end
 
 """If d,d' are singleton diagrams and f hasn't yet been specified, make a DiagramHom with the right
 domain, codomain, and shape_map but the natural transformation component left as GATExpr{:zeromap} for now.
 Otherwise just wrap f up as a DiagramHom between singletons.
 """
-function make_query_hom(::C, f::Hom, d::Diagram{T,C}, d′::Diagram{T,C}) where
-    {T, Ob, Hom, C<:FinCat{Ob,Hom}}
-  munit(DiagramHom{T}, codom(diagram(d)), f,
-  dom_shape=shape(d), codom_shape=shape(d′))
-end
-function make_query_hom(::C, f::HomExpr{:zeromap}, d::Diagram{T,C}, d′::Diagram{T,C}) where {T,C<:FinCat}
+singleton_query_hom(f, d::DiagramId, d′::DiagramId) = begin
   j′ = only(ob_generators(shape(d′)))
   j = only(ob_generators(shape(d)))
-  DiagramHom{T}(Dict(j=> Pair(j′,f)),d,d′)
+  DiagramHom(Dict(j => Pair(j′, f)), d, d′)
 end
 
-function make_query_hom(::C, f::Hom, d::Diagram{op,C}, d′::Diagram{op,C}) where
-    {Ob, Hom, C<:FinCat{Ob,Hom}}
-  munit(DiagramHom{op}, codom(diagram(d)), f,
-  dom_shape=shape(d), codom_shape=shape(d′))
+function make_query_hom(::C, f, d::DiagramId, d′::DiagramId) where C
+  if f isa DiagramHomData{op}
+    f′ = make_query_hom(C, f, only(collect_ob(d)), only(collect_ob(d′)))
+    singleton_query_hom(f′, d, d′)
+  else
+    singleton_query_hom(f, d, d′)
+  end
 end
 
-function make_query_hom(::C, f::HomExpr{:zeromap}, d::Diagram{op,C}, d′::Diagram{op,C}) where C<:FinCat
+function make_query_hom(C::FinCat, f, d::DiagramId, d′::DiagramId)
+  if f isa DiagramHomData{op}
+    f′ = make_query_hom(C, f, only(collect_ob(d)), only(collect_ob(d′)))
+    singleton_query_hom(f′, d, d′)
+  else
+    singleton_query_hom(f, d, d′)
+  end
+end
+
+function make_query_hom(::C, f, d::DiagramOp, d′::DiagramOp) where C
   j′ = only(ob_generators(shape(d′)))
   j = only(ob_generators(shape(d)))
-  DiagramHom{op}(Dict(j′=> Pair(j,f)),d,d′)
-end
-function make_query_hom(c::C, f::Union{Hom,DiagramHomData{op}},
-                        d::Diagram{id}, d′::Diagram{id}) where
-    {Ob, Hom, C<:FinCat{Ob,Hom}}
-  f′ = make_query_hom(c, f, only(collect_ob(d)), only(collect_ob(d′)))
-  munit(DiagramHom{id}, codom(diagram(d)), f′, dom_shape=shape(d), codom_shape=shape(d′))
+  DiagramHom(Dict(j′ => Pair(j, f)), d, d′)
 end
 
-make_query_hom(C::FinCat{Ob,Hom}, f::Hom, x::Ob, y::Ob) where {Ob,Hom} = f
+function make_query_hom(::FinCat, f, d::DiagramOp, d′::DiagramOp)
+  j′ = only(ob_generators(shape(d′)))
+  j = only(ob_generators(shape(d)))
+  DiagramHom(Dict(j′ => Pair(j, f)), d, d′)
+end
+
+make_query_hom(C::FinCat, f, x, y) = f
 
 only_ob(C::FinCat) = only(ob_generators(C))
 only_hom(C::FinCat) = (@assert is_discrete(C); id(C, only_ob(C)))
@@ -939,18 +1101,10 @@ only_hom(C::FinCat) = (@assert is_discrete(C); id(C, only_ob(C)))
 # https://docs.julialang.org/en/v1/manual/conversion-and-promotion/
 
 promote_query_rule(::Type, ::Type) = Union{}
-promote_query_rule(::Type{<:ConjQuery{C}}, ::Type{<:Ob}) where {Ob,C<:FinCat{Ob}} =
-  ConjQuery{C}
-promote_query_rule(::Type{<:GlueQuery{C}}, ::Type{<:Ob}) where {Ob,C<:FinCat{Ob}} =
-  GlueQuery{C}
-promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:Ob}) where {Ob,C<:FinCat{Ob}} =
-  GlucQuery{C}
-promote_query_rule(::Type{<:GlueQuery{C}}, ::Type{<:ConjQuery{C}}) where C =
-  GlucQuery{C}
-promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:ConjQuery{C}}) where C =
-  GlucQuery{C}
-promote_query_rule(::Type{<:GlucQuery{C}}, ::Type{<:GlueQuery{C}}) where C =
-  GlucQuery{C}
+promote_query_rule(::Type{<:DiagramOp}, ::Type) = DiagramOp
+promote_query_rule(::Type{<:DiagramId}, ::Type) = DiagramId
+promote_query_rule(::Type{<:DiagramId}, ::Type{<:DiagramOp}) = DiagramId
+promote_query_rule(::Type{<:DiagramOp}, ::Type{<:DiagramId}) = DiagramId
 
 promote_query_type(T, S) = promote_query_result(
   T, S, Union{promote_query_rule(T,S), promote_query_rule(S,T)})
@@ -958,34 +1112,35 @@ promote_query_result(T, S, ::Type{Union{}}) = typejoin(T, S)
 promote_query_result(T, S, U) = U
 
 convert_query(::FinCat, ::Type{T}, x::S) where {T, S<:T} = x
+convert_query(::FinCat, ::Type{<:Diagram}, d::Diagram) = d
+convert_query(::FinCat, ::Type{<:DiagramOp}, d::DiagramOp) = d
+convert_query(::FinCat, ::Type{<:DiagramId}, d::DiagramId) = d
+convert_query(cat::FinCat, ::Type{<:Diagram}, x) = convert_query(cat, DiagramOp, x)
 
-function convert_query(cat::C, ::Type{<:Diagram{T,C}}, x::Obj) where
-  {T, Obj, C<:FinCat{Obj}}
-  s = presentation(cat).syntax 
+function convert_query(cat::FinCat, ::Type{<:DiagramOp}, x)
+  s = presentation(cat.val).syntax
   p = Presentation(s)
-  add_generator!(p,Ob(s,nameof(x)))
-  munit(Diagram{T}, cat, x, shape=FinCat(p))
+  add_generator!(p, Ob(s, nameof(x)))
+  J = FinCat(p)
+  j = only(ob_generators(J))
+  make_diagram(op, FinDomFunctor(Dict(j => x), Dict(), J, cat; homtype=:hom))
 end
-function convert_query(::C, ::Type{<:GlucQuery{C}}, d::ConjQuery{C}) where C
-  s = FreeCategory
+
+function convert_query(cat::FinCat, ::Type{<:DiagramId}, x)
+  s = presentation(cat.val).syntax
   p = Presentation(s)
-  add_generator!(p,Ob(s,Symbol("anon_ob")))
-  munit(Diagram{id}, TypeCat(ConjQuery{C}, Any), d; shape=FinCat(p))
+  add_generator!(p, Ob(s, nameof(x)))
+  J = FinCat(p)
+  j = only(ob_generators(J))
+  make_diagram(id, FinFunctor(Dict(j => x), Dict(), J, cat; homtype=:hom))
 end
-function convert_query(cat::C, ::Type{<:GlucQuery{C}}, d::GlueQuery{C}) where C
-  J = shape(d)
-  new_ob = make_map(ob_generators(J)) do j
-    convert_query(cat, ConjQuery{C}, ob_map(d, j))
-  end
-  new_hom = make_map(hom_generators(J)) do h
-    munit(Diagram{op}, cat, hom_map(d, h),
-          dom_shape=new_ob[dom(J,h)], codom_shape=new_ob[codom(J,h)])
-  end
-  Diagram{id}(FinDomFunctor(new_ob, new_hom, J, TypeCat(ConjQuery{C}, Any)))
-end
-function convert_query(cat::C, ::Type{<:GlucQuery{C}}, x::Ob) where
-    {Ob, C<:FinCat{Ob}}
-  convert_query(cat, GlucQuery{C}, convert_query(cat, ConjQuery{C}, x))
+function convert_query(::FinCat, ::Type{<:DiagramId}, d::DiagramOp)
+  s = presentation(shape(d).val).syntax
+  p = Presentation(s)
+  add_generator!(p, Ob(s, Symbol("anon_ob")))
+  J = FinCat(p)
+  j = only(ob_generators(J))
+  make_diagram(id, FinDomFunctor(Dict(j => d), Dict(), J, typed_typecat(ConjQuery, Any); homtype=:hom))
 end
 
 # Julia expression to AST
