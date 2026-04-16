@@ -19,23 +19,7 @@ end
 
 # Graph whose edges are paths of length 2.
 V, E, s, t = generators(SchGraph)
-C = FinCat(SchGraph)
-F_V = FinDomFunctor([V], FinCat(1), C)
-F_E = FinDomFunctor(FreeDiagram(Cospan(t, s)), C)
-M = DataMigration(FinDomFunctor(Dict(V => Diagram{op}(F_V),
-                       E => Diagram{op}(F_E)),
-                  Dict(s => DiagramHom{op}([(1, s)], F_E, F_V),
-                       t => DiagramHom{op}([(2, t)], F_E, F_V)), C))
-@test M isa DataMigrations.Migrations.ConjSchemaMigration
-g = path_graph(Graph, 5)
-H = migrate(g, M, tabular=true)
-@test length(H(V)) == 5
-@test length(H(E)) == 3
-@test H(s)((x1=2, x2=3, x3=3)) == (x1=2,)
-@test H(t)((x1=2, x2=3, x3=3)) == (x1=4,)
-
-# Same migration, but defining using the `@migration` macro.
-M = @migration SchGraph SchGraph begin
+M_macro = @migration SchGraph SchGraph begin
   V => V
   E => @join begin
     v::V
@@ -46,12 +30,23 @@ M = @migration SchGraph SchGraph begin
   src => e₁ ⋅ src
   tgt => e₂ ⋅ tgt
 end
+M = DataMigration(functor(M_macro))
+@test M isa DataMigrations.Migrations.ConjSchemaMigration
+g = path_graph(Graph, 5)
+H = migrate(g, M, tabular=true)
+@test length(ob_map(H, V)) == 5
+@test length(ob_map(H, E)) == 3
+@test hom_map(H, s)((v=3, e₁=2, e₂=3)) == (V=2,)
+@test hom_map(H, t)((v=3, e₁=2, e₂=3)) == (V=4,)
+
+# Same migration, but defining using the `@migration` macro.
+M = M_macro
 F = functor(M)
 H = migrate(g, M, tabular=true)
-@test length(H(V)) == 5
-@test length(H(E)) == 3
-@test map(H(s),dom(H(s))) == [(V=1,),(V=2,),(V=3,)]
-@test map(H(t),dom(H(t))) == [(V=3,),(V=4,),(V=5,)]
+@test length(ob_map(H, V)) == 5
+@test length(ob_map(H, E)) == 3
+@test map(hom_map(H, s),dom(hom_map(H, s))) == [(V=1,),(V=2,),(V=3,)]
+@test map(hom_map(H, t),dom(hom_map(H, t))) == [(V=3,),(V=4,),(V=5,)]
 
 h = migrate(Graph, g, M)
 @test (nv(h), ne(h)) == (5, 3)
@@ -587,7 +582,7 @@ M = @migration SchSplit SchWithLabel begin
     (A:x → L)::(x -> "B")
   end
 end
-data = @acset_colim yWithLabel begin x::X end
+data = DataMigrations.@acset_colim yWithLabel begin x::X end
 result = migrate(Split, data, M)
 @test result == @acset Split begin end
 
@@ -628,13 +623,13 @@ M1 = @migration SchSplitWithDefault SchWithLabel begin
   bIsThing => x
 end
 
-data1 = @acset_colim yWithLabel begin
+data1 = DataMigrations.@acset_colim yWithLabel begin
   x::X
   hasLabel(x) == "A"
 end
 
 
-data2 = @acset_colim yWithLabel begin
+data2 = DataMigrations.@acset_colim yWithLabel begin
   (x1, x2)::X
   hasLabel(x1) == "A"
   hasLabel(x2) == "C"
