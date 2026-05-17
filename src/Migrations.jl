@@ -14,8 +14,8 @@ import Catlab: ob_map, hom_map, functor
 using Catlab.CategoricalAlgebra.FinCats: make_map, mapvals, presentation_key, FinCatPresentation, FinDomFunctorMap
 import Catlab.CategoricalAlgebra.FinCats: force
 using Catlab.CategoricalAlgebra.Chase: collage, crel_type, pres_to_eds, add_srctgt, chase
-using Catlab.CategoricalAlgebra.FinSets: VarSet
-using Catlab.CategoricalAlgebra.Sets: SetFunctionCallable
+# using Catlab.CategoricalAlgebra.FinSets: VarSet
+# using Catlab.CategoricalAlgebra.Sets: SetFunctionCallable
 import Catlab.CategoricalAlgebra.FunctorialDataMigrations: migrate, migrate!, AbstractDataMigration, ContravariantMigration, DeltaSchemaMigration
 import Catlab.CategoricalAlgebra.Diagrams: DiagramHom
 using MLStyle: @match
@@ -46,27 +46,28 @@ the inner `diagram`. If the keys of `params` are constants
 then ``Y`` will receive constant attributes at the 
 corresponding values.
 """
-struct QueryDiagram{T,C<:Cat,D<:Functor{<:FinCat,C},
-                    Params<:AbstractDict} <: Diagram{T,C,D}
-  diagram::D
+struct QueryDiagram{Params<:AbstractDict}
+  diagram::FreeDiagram
   params::Params
 end
-"""
-    QueryDiagram{T}(F,params)
 
-Construct a `QueryDiagram` based on the `Functor` `F`
-and with parameter dictionary `params`. 
+# """
+#     QueryDiagram{T}(F,params)
 
-The type parameter
-`T` may be `id`, `op`, or possibly `co` or `Any`, though not
-all functionality is defined for `co` and not all functionality
-is definable for `Any`. Other type parameters are inferred from 
-the type of `F`. The type `C` of the codomain `F`
-will in practice be a subtype of `FinCat` or of 
-`Diagram``{T}`. 
-"""
-QueryDiagram{T}(F::D, params::P) where {T,C<:Cat,D<:Functor{<:FinCat,C},P} =
-  QueryDiagram{T,C,D,P}(F, params)
+# Construct a `QueryDiagram` based on the `Functor` `F`
+# and with parameter dictionary `params`. 
+
+# The type parameter
+# `T` may be `id`, `op`, or possibly `co` or `Any`, though not
+# all functionality is defined for `co` and not all functionality
+# is definable for `Any`. Other type parameters are inferred from 
+# the type of `F`. The type `C` of the codomain `F`
+# will in practice be a subtype of `FinCat` or of 
+# `Diagram``{T}`. 
+# """
+# QueryDiagram{T}(F::FreeDiagram, params::P) where P =
+#   QueryDiagram{T,C,D,P}(F, params)
+
 """
     force(d::QueryDiagram,[args...])
 
@@ -378,12 +379,12 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     diagram_types = if c isa AttrTypeExpr #Note this won't work if M constructed its own target schema!!!
       (TypeSet, SetFunction)
     elseif isempty(J)
-      (FinSet{Int}, FinFunction{Int})
+      (FinSetInt, FinFunction{Int})
     else
       (SetOb, FinDomFunction{Int})
     end
     =#
-    diagram_types = isempty(J) ? (FinSet{Int}, FinFunction{Int}) : (Any,Any)
+    diagram_types = isempty(J) ? (FinSetInt, FinFunction{Int}) : (Any,Any)
     # Make sure the diagram to be limited is a FinCat{<:Int}.
     # Disable domain check because acsets don't store schema equations.
     k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...)))
@@ -414,7 +415,7 @@ function migrate(X::FinDomFunctor, M::ConjSchemaMigration;
     t = compose(Ff, X, f_params)
     universal(t, limits[c], limits[d])
   end
-  cod = isempty(limits) ? TypeCat(FinSet{Int}, FinDomFunction{Int}) : nothing
+  cod = isempty(limits) ? TypeCat(FinSetInt, FinDomFunction{Int}) : nothing
   Y = FinDomFunctor(mapvals(ob, limits), funcs, tgt_schema, cod)
   return_limits ? (Y, limits) : Y
 end
@@ -431,7 +432,7 @@ function migrate(X::FinDomFunctor, M::GlueSchemaMigration)
   colimits = make_map(ob_generators(tgt_schema)) do c
     Fc = ob_map(F, c)
     diagram_types = c isa AttrTypeExpr ? (TypeSet, SetFunction) :
-                    (FinSet{Int}, FinFunction{Int})
+                    (FinSetInt, FinFunction{Int})
     k = dom_to_graph(diagram(force(compose(Fc, X), diagram_types...))) #XX: might be issues with attrvars here
     colimit(k, SpecializeColimit())
   end
